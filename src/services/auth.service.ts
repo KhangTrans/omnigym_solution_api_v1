@@ -111,6 +111,64 @@ export const registerUser = async (userData: any) => {
   return newUser;
 };
 
+// Reset Password Logic
+const resetStore: Record<string, { otp: string, expiresAt: number }> = {};
+
+export const initiateForgotPassword = async (email: string) => {
+  const userRepository = AppDataSource.getRepository(User);
+  const user = await userRepository.findOne({ where: { email } });
+
+  if (!user) {
+    throw new Error('Email không tồn tại trên hệ thống.');
+  }
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = Date.now() + 15 * 60 * 1000; // 15 mins
+
+  resetStore[email] = { otp, expiresAt };
+
+  await transporter.sendMail({
+    from: process.env.MAIL_FROM,
+    to: email,
+    subject: 'Yêu cầu khôi phục mật khẩu - OmniGym',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 10px;">
+        <h2 style="color: #f44336; text-align: center;">Khôi phục mật khẩu</h2>
+        <p>Chào bạn,</p>
+        <p>Chúng tôi đã nhận được yêu cầu khôi phục mật khẩu cho tài khoản của bạn. Vui lòng sử dụng mã OTP dưới đây:</p>
+        <div style="text-align: center; margin: 20px 0;">
+          <span style="font-size: 28px; font-weight: bold; color: #333; background: #eee; padding: 10px 20px; border-radius: 5px;">${otp}</span>
+        </div>
+        <p>Mã này có hiệu lực trong <b>15 phút</b>.</p>
+        <p>Nếu bạn không gửi yêu cầu này, vui lòng bỏ qua email này hoặc liên hệ hỗ trợ.</p>
+        <hr style="border: none; border-top: 1px solid #eee;">
+        <p style="font-size: 12px; color: #999;">OmniGym Solution</p>
+      </div>
+    `,
+  });
+
+  return { message: 'Mã khôi phục đã được gửi vào email của bạn.' };
+};
+
+export const resetPassword = async (email: string, otp: string, newPass: string) => {
+  const data = resetStore[email];
+
+  if (!data || data.otp !== otp || Date.now() > data.expiresAt) {
+    throw new Error('Mã OTP không chính xác hoặc đã hết hạn.');
+  }
+
+  const userRepository = AppDataSource.getRepository(User);
+  const user = await userRepository.findOne({ where: { email } });
+
+  if (!user) throw new Error('Người dùng không tồn tại.');
+
+  user.password = await bcrypt.hash(newPass, 10);
+  await userRepository.save(user);
+
+  delete resetStore[email];
+  return { message: 'Mật khẩu đã được thay đổi thành công.' };
+};
+
 export const loginUser = async (identifier: string, password: string) => {
   const userRepository = AppDataSource.getRepository(User);
   
