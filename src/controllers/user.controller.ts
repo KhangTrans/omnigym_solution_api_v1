@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { fetchUsers, createNewUser } from '../services/user.service';
+import { fetchUsers, createNewUser } from '../services/user.service.js';
 
 export const getUsers = (req: Request, res: Response) => {
   const users = fetchUsers();
