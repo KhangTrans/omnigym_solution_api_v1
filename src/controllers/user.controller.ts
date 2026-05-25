@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { fetchUsers, createNewUser, updateUserProfile } from '../services/user.service.js';
+import { UpdateProfileDto, CreateUserDto } from '../dtos/user.dto.js';
 
 export const getUsers = async (req: Request, res: Response) => {
   const users = await fetchUsers();
@@ -13,7 +14,8 @@ export const updateProfile = async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const updatedUser = await updateUserProfile(userId, req.body);
+    const updateData: UpdateProfileDto = req.body;
+    const updatedUser = await updateUserProfile(userId, updateData);
     res.json({ message: 'Profile updated successfully', user: updatedUser });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -21,7 +23,7 @@ export const updateProfile = async (req: Request, res: Response) => {
 };
 
 export const createUser = (req: Request, res: Response) => {
-  const { name } = req.body;
+  const { name }: CreateUserDto = req.body;
   if (!name) {
     return res.status(400).json({ message: 'Name is required' });
   }

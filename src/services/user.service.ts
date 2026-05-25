@@ -1,12 +1,13 @@
 import { AppDataSource } from '../config/data-source.js';
 import { User } from '../models/user.entity.js';
+import { UpdateProfileDto, CreateUserDto } from '../dtos/user.dto.js';
 
 export const fetchUsers = async () => {
   const userRepository = AppDataSource.getRepository(User);
   return await userRepository.find();
 };
 
-export const updateUserProfile = async (userId: number, updateData: any) => {
+export const updateUserProfile = async (userId: number, updateData: UpdateProfileDto) => {
   const userRepository = AppDataSource.getRepository(User);
   const user = await userRepository.findOneBy({ id: userId });
 
@@ -26,7 +27,7 @@ export const updateUserProfile = async (userId: number, updateData: any) => {
   return await userRepository.save(user);
 };
 
-export const createNewUser = (userData: { name: string }) => {
+export const createNewUser = (userData: CreateUserDto) => {
   // Logic to save user to database would go here
   return { id: Date.now(), ...userData };
 };

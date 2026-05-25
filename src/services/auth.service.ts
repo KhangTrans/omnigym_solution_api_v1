@@ -3,6 +3,7 @@ import { User } from '../models/user.entity.js';
 import bcrypt from 'bcrypt';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import { RegisterUserDto } from '../dtos/auth.dto.js';
 
 dotenv.config();
 
@@ -101,7 +102,7 @@ export const verifyOTP = async (identifier: string, otp: string) => {
   return false;
 };
 
-export const registerUser = async (userData: any) => {
+export const registerUser = async (userData: RegisterUserDto) => {
   const userRepository = AppDataSource.getRepository(User);
 
   // Check existing user again to be safe

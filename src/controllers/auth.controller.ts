@@ -3,10 +3,11 @@ import * as authService from '../services/auth.service.js';
 import { decryptRSA } from '../utils/crypto.js';
 import { AppDataSource } from '../config/data-source.js';
 import { User } from '../models/user.entity.js';
+import { RequestOTPDto, CompleteRegistrationDto, LoginDto } from '../dtos/auth.dto.js';
 
 export const requestOTP = async (req: Request, res: Response) => {
   try {
-    const { identifier } = req.body; // email or phone
+    const { identifier }: RequestOTPDto = req.body; // email or phone
     const result = await authService.sendOTP(identifier);
     res.json(result);
   } catch (error: any) {
@@ -17,7 +18,7 @@ export const requestOTP = async (req: Request, res: Response) => {
 
 export const completeRegistration = async (req: Request, res: Response) => {
   try {
-    const { identifier, otp, password, personalInfo } = req.body;
+    const { identifier, otp, password, personalInfo }: CompleteRegistrationDto = req.body;
 
     // Verify OTP first
     const isOTPValid = await authService.verifyOTP(identifier, otp);
@@ -32,6 +33,7 @@ export const completeRegistration = async (req: Request, res: Response) => {
       email: identifier.includes('@') ? identifier : undefined,
       phone_number: !identifier.includes('@') ? identifier : undefined,
       password: password,
+      role_id: 3, // Default role: Customer
       ...personalInfo
     });
 
@@ -44,7 +46,7 @@ export const completeRegistration = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const { identifier, password } = req.body;
+    const { identifier, password }: LoginDto = req.body;
     const user = await authService.loginUser(identifier, password);
 
     // Save to session
