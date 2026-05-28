@@ -24,6 +24,14 @@ export const updateProfile = async (req: Request, res: Response) => {
     }
 
     const updatedUser = await updateUserProfile(userId, updateData);
+
+    // Sync session data with updated user info
+    if (req.session.user) {
+      req.session.user.full_name = updatedUser.full_name;
+      req.session.user.avatar_url = updatedUser.avatar_url;
+      req.session.user.phone_number = updatedUser.phone_number;
+    }
+
     res.json({ message: 'Profile updated successfully', user: updatedUser });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
