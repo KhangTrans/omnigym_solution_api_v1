@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToOne } from 'typeorm';
 import { Role } from './role.entity.js';
+import { Customer } from './customer.entity.js';
 
 @Entity('users')
 export class User {
@@ -12,6 +13,9 @@ export class User {
   @ManyToOne(() => Role)
   @JoinColumn({ name: 'role_id' })
   role!: Role;
+
+  @OneToOne(() => Customer, (customer) => customer.user)
+  customer?: Customer;
 
   @Column({ type: 'varchar', length: 100, unique: true, nullable: true })
   email?: string;

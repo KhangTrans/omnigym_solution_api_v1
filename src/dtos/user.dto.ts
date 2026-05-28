@@ -1,6 +1,7 @@
 export interface UpdateProfileDto {
   full_name?: string;
   avatar_url?: string;
+  phone_number?: string;
   dob?: string | Date;
   height?: number;
   weight?: number;

@@ -278,6 +278,12 @@ export const loginWithGoogle = async (googlePayload: any) => {
       where: { id: user.id },
       relations: { role: true }
     }) as User;
+  } else {
+    // Update avatar if missing or changed
+    if (user.avatar_url !== picture) {
+      user.avatar_url = picture;
+      await userRepository.save(user);
+    }
   }
 
   return user;
