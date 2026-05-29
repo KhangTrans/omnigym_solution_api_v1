@@ -17,6 +17,9 @@ export interface UpdateProfileDto {
   company_name?: string;
   tax_code?: string;
   business_license?: string;
+  description?: string;
+  tag_line?: string;
+  logo_url?: string;
   // Staff fields
   department?: string;
 }

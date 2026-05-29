@@ -77,6 +77,9 @@ export const updateUserProfile = async (userId: number, updateData: UpdateProfil
       if (updateData.company_name) partner.company_name = updateData.company_name;
       if (updateData.tax_code) partner.tax_code = updateData.tax_code;
       if (updateData.business_license) partner.business_license = updateData.business_license;
+      if (updateData.description !== undefined) partner.description = updateData.description;
+      if (updateData.tag_line !== undefined) partner.tag_line = updateData.tag_line;
+      if (updateData.logo_url !== undefined) partner.logo_url = updateData.logo_url;
       await partnerRepo.save(partner);
       break;
 

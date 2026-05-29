@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, CreateDateColumn, ManyToOne } from 'typeorm';
 import { User } from './user.entity.js';
 
 @Entity('partners')
@@ -20,7 +20,23 @@ export class Partner {
   description?: string;
 
   @Column({ type: 'varchar', length: 20, default: 'pending' })
-  application_status!: string;
+  application_status!: 'pending' | 'approved' | 'rejected';
+
+  @CreateDateColumn({ type: 'timestamp', name: 'submitted_at' })
+  submitted_at!: Date;
+
+  @Column({ type: 'timestamp', nullable: true, name: 'reviewed_at' })
+  reviewed_at?: Date;
+
+  @Column({ name: 'reviewed_by', type: 'int', nullable: true })
+  reviewed_by_id?: number;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'reviewed_by' })
+  reviewer?: User;
+
+  @Column({ type: 'text', nullable: true })
+  rejection_reason?: string;
 
   @Column({ type: 'varchar', length: 500, nullable: true })
   logo_url?: string;

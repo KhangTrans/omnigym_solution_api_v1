@@ -30,6 +30,9 @@ export class Trainer {
   @Column({ type: 'varchar', length: 255, nullable: true })
   specialization?: string;
 
+  @Column({ type: 'int', default: 0 })
+  experience_years!: number;
+
   @Column({ type: 'decimal', precision: 3, scale: 2, default: 0 })
   rating!: number;
 }

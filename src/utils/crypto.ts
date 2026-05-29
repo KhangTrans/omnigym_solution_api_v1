@@ -17,18 +17,47 @@ export const decryptAES = (cipherText: string): string => {
 };
 
 // RSA Setup (In real apps, load from files or env)
-const rsa = new NodeRSA({ b: 2048 });
-// For demo, we generate keys if not in env
-const privateKey = process.env.RSA_PRIVATE_KEY || rsa.generateKeyPair().exportKey('private');
-const publicKey = process.env.RSA_PUBLIC_KEY || rsa.exportKey('public');
+const rawPrivateKey = process.env.RSA_PRIVATE_KEY;
 
-const rsaInstance = new NodeRSA(privateKey);
+// Xử lý ký tự xuống dòng từ file .env nếu có
+const cleanPrivateKey = rawPrivateKey 
+  ? rawPrivateKey.replace(/\\n/g, '\n').trim().replace(/^"|"$/g, '') 
+  : null;
+
+// Khởi tạo instance với cấu hình mặc định tương thích cao
+const rsaInstance = new NodeRSA();
+
+if (cleanPrivateKey) {
+  try {
+    // Import Private Key
+    rsaInstance.importKey(cleanPrivateKey, 'private');
+  } catch (err) {
+    console.warn('RSA Private Key invalid, generating new key...');
+    rsaInstance.generateKeyPair(2048);
+  }
+} else {
+  rsaInstance.generateKeyPair(2048);
+}
+
+// Quan trọng: Sử dụng pkcs1 padding (mặc định của JSEncrypt)
+rsaInstance.setOptions({ encryptionScheme: 'pkcs1' });
+
+export const getPublicKey = (): string => {
+  // Xuất ra PKCS#8 PEM - chuẩn mà JSEncrypt hỗ trợ tốt nhất nếu key sạch
+  return rsaInstance.exportKey('pkcs8-public-pem');
+};
 
 export const decryptRSA = (encryptedData: string): string => {
-  return rsaInstance.decrypt(encryptedData, 'utf8');
+  try {
+    if (!encryptedData) throw new Error('Data to decrypt is empty');
+    // node-rsa giải mã chuỗi base64 mặc định nếu encryptionScheme đã set
+    return rsaInstance.decrypt(encryptedData, 'utf8');
+  } catch (error: any) {
+    console.error('RSA Decryption Error Details:', error.message);
+    throw error;
+  }
 };
 
 export const encryptRSA = (text: string): string => {
-  const pub = new NodeRSA(publicKey);
-  return pub.encrypt(text, 'base64');
+  return rsaInstance.encrypt(text, 'base64');
 };

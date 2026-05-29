@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import * as authService from '../services/auth.service.js';
-import { decryptRSA } from '../utils/crypto.js';
+import { decryptRSA, getPublicKey } from '../utils/crypto.js';
 import { AppDataSource } from '../config/data-source.js';
 import { User } from '../models/user.entity.js';
 import { RequestOTPDto, CompleteRegistrationDto, LoginDto, GoogleLoginDto } from '../dtos/auth.dto.js';
@@ -23,16 +23,21 @@ export const completeRegistration = async (req: Request, res: Response) => {
     // Verify OTP first
     const isOTPValid = await authService.verifyOTP(identifier, otp);
     if (!isOTPValid) {
-      return res.status(400).json({ message: 'Invalid or expired OTP' });
+      return res.status(400).json({ message: 'Mã OTP không chính xác hoặc đã hết hạn.' });
     }
 
-    // Optional: Decrypt password if it was sent using RSA
-    // const decryptedPassword = decryptRSA(password);
+    // Decrypt password sent using RSA
+    let decryptedPassword = password;
+    try {
+      decryptedPassword = decryptRSA(password);
+    } catch (error) {
+      console.warn('RSA decryption failed, using password as plain text');
+    }
 
     const user = await authService.registerUser({
       email: identifier.includes('@') ? identifier : undefined,
       phone_number: !identifier.includes('@') ? identifier : undefined,
-      password: password,
+      password: decryptedPassword,
       role_id: 3, // Default role: Customer
       full_name: personalInfo?.full_name || '',
       ...personalInfo,
@@ -49,7 +54,16 @@ export const completeRegistration = async (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
   try {
     const { identifier, password }: LoginDto = req.body;
-    const user = await authService.loginUser(identifier, password);
+    
+    // Decrypt password sent using RSA
+    let decryptedPassword = password;
+    try {
+      decryptedPassword = decryptRSA(password);
+    } catch (error) {
+      console.warn('RSA decryption failed for login, trying plain text fallback');
+    }
+    
+    const user = await authService.loginUser(identifier, decryptedPassword);
 
     // Save to session
     req.session.user = {
@@ -99,6 +113,10 @@ export const logout = (req: Request, res: Response) => {
   });
 };
 
+export const fetchPublicKey = (req: Request, res: Response) => {
+  res.json({ publicKey: getPublicKey() });
+};
+
 export const getProfile = async (req: Request, res: Response) => {
   try {
     const userId = req.session.user?.id;
@@ -143,7 +161,16 @@ export const forgotPassword = async (req: Request, res: Response) => {
 export const resetPassword = async (req: Request, res: Response) => {
   try {
     const { email, otp, newPassword } = req.body;
-    const result = await authService.resetPassword(email, otp, newPassword);
+    
+    // Decrypt password sent using RSA
+    let decryptedNewPassword = newPassword;
+    try {
+      if (newPassword) decryptedNewPassword = decryptRSA(newPassword);
+    } catch (error: any) {
+      console.error('Failed to decrypt reset password:', error.message);
+    }
+    
+    const result = await authService.resetPassword(email, otp, decryptedNewPassword);
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
@@ -159,7 +186,22 @@ export const changePassword = async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const result = await authService.changePassword(userId, oldPassword, newPassword);
+    // Decrypt passwords sent using RSA
+    let decryptedOldPassword = oldPassword;
+    let decryptedNewPassword = newPassword;
+    try {
+      if (oldPassword) decryptedOldPassword = decryptRSA(oldPassword);
+    } catch (error: any) {
+      console.error('Failed to decrypt oldPassword:', error.message);
+    }
+
+    try {
+      if (newPassword) decryptedNewPassword = decryptRSA(newPassword);
+    } catch (error: any) {
+      console.error('Failed to decrypt newPassword:', error.message);
+    }
+
+    const result = await authService.changePassword(userId, decryptedOldPassword, decryptedNewPassword);
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ message: error.message });
