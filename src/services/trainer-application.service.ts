@@ -1,0 +1,274 @@
+import { AppDataSource } from "../config/data-source.js";
+import { TrainerApplication } from "../models/trainer-application.entity.js";
+import { TrainerApplicationCertificate } from "../models/trainer-application-certificate.entity.js";
+import { Trainer } from "../models/trainer.entity.js";
+import { TrainerCertificate } from "../models/trainer-certificate.entity.js";
+import { User } from "../models/user.entity.js";
+import { CreateTrainerApplicationDto } from "../dtos/create-trainers-application.dto.js";
+import {
+  ApplicationStatus,
+  CertificateStatus,
+} from "../models/trainer-status.enum.js";
+
+export const submitTrainerApplication = async (
+  userId: number,
+  dto: CreateTrainerApplicationDto,
+) => {
+  return AppDataSource.transaction(async (manager) => {
+    const applicationRepo = manager.getRepository(TrainerApplication);
+    const certificateRepo = manager.getRepository(
+      TrainerApplicationCertificate,
+    );
+    const trainerRepo = manager.getRepository(Trainer);
+
+    // Lấy đơn mới nhất của user. Pending/approved thì không cho gửi lại.
+    // Draft/rejected thì cho cập nhật và gửi lại thành pending.
+    let application = await applicationRepo.findOne({
+      where: { user_id: userId },
+      order: { created_at: "DESC" },
+    });
+
+    if (application?.status === ApplicationStatus.Pending) {
+      throw new Error("Đơn đăng ký Trainer của bạn đang chờ duyệt.");
+    }
+
+    if (application?.status === ApplicationStatus.Approved) {
+      throw new Error("Tài khoản Trainer của bạn đã được duyệt.");
+    }
+
+    if (!application) {
+      application = applicationRepo.create({
+        user_id: userId,
+      });
+    }
+
+    application.bio = dto.bio;
+    application.specialization = dto.specialization;
+    application.avatar_url = dto.avatar_url;
+    application.phone_number = dto.phone_number;
+    application.address = dto.address;
+    application.years_experience = dto.years_experience ?? 0;
+    application.hourly_rate = dto.hourly_rate ?? 0;
+    application.identity_number = dto.identity_number;
+    application.identity_image_url = dto.identity_image_url;
+    application.status = ApplicationStatus.Pending;
+    application.submitted_at = new Date();
+    application.reviewed_at = undefined;
+    application.reviewed_by = undefined;
+    application.rejection_reason = undefined;
+
+    const savedApplication = await applicationRepo.save(application);
+
+    // Nếu đơn là rejected/draft và user submit lại, thay bộ certificates mới.
+    await certificateRepo.delete({
+      application_id: savedApplication.id,
+    });
+
+    const certificates = dto.certificates.map((cert) =>
+      certificateRepo.create({
+        application_id: savedApplication.id,
+        cert_name: cert.cert_name,
+        issued_by: cert.issued_by,
+        certificate_number: cert.certificate_number,
+        image_url: cert.image_url,
+        issued_at: cert.issued_at ? new Date(cert.issued_at) : undefined,
+        expires_at: cert.expires_at ? new Date(cert.expires_at) : undefined,
+        status: CertificateStatus.Pending,
+      }),
+    );
+
+    await certificateRepo.save(certificates);
+
+    // Đảm bảo user có trainer record inactive trỏ tới application này.
+    let trainer = await trainerRepo.findOne({
+      where: { user_id: userId },
+    });
+
+    if (!trainer) {
+      trainer = trainerRepo.create({
+        user_id: userId,
+        application_id: savedApplication.id,
+        is_active: false,
+      });
+      await trainerRepo.save(trainer);
+    } else if (trainer.application_id !== savedApplication.id) {
+      trainer.application_id = savedApplication.id;
+      trainer.is_active = false;
+      await trainerRepo.save(trainer);
+    }
+
+    return {
+      ...savedApplication,
+      certificates,
+    };
+  });
+};
+
+//get list trainer
+export const getTrainerApplications = async () => {
+  const applicationRepo = AppDataSource.getRepository(TrainerApplication);
+
+  return applicationRepo.find({
+    relations: {
+      user: true,
+      certificates: true,
+    },
+    order: {
+      created_at: "DESC",
+    },
+  });
+};
+
+//get detail
+export const getTrainerApplicationById = async (id: number) => {
+  const applicationRepo = AppDataSource.getRepository(TrainerApplication);
+
+  const application = await applicationRepo.findOne({
+    where: { id },
+    relations: {
+      user: true,
+      certificates: true,
+    },
+  });
+
+  if (!application) {
+    throw new Error("Không tìm thấy đơn đăng ký Trainer.");
+  }
+
+  return application;
+};
+
+export const getMyTrainerApplication = async (userId: number) => {
+  const applicationRepo = AppDataSource.getRepository(TrainerApplication);
+
+  return applicationRepo.findOne({
+    where: { user_id: userId },
+    relations: {
+      certificates: true,
+    },
+    order: {
+      created_at: "DESC",
+    },
+  });
+};
+
+//reject trainer
+export const rejectTrainerApplication = async (
+  applicationId: number,
+  adminId: number,
+  rejectionReason: string,
+) => {
+  const applicationRepo = AppDataSource.getRepository(TrainerApplication);
+
+  const application = await applicationRepo.findOne({
+    where: { id: applicationId },
+  });
+
+  if (!application) {
+    throw new Error("Không tìm thấy đơn đăng ký Trainer.");
+  }
+
+  if (application.status !== ApplicationStatus.Pending) {
+    throw new Error("Chỉ có thể từ chối đơn đang chờ duyệt.");
+  }
+
+  application.status = ApplicationStatus.Rejected;
+  application.reviewed_at = new Date();
+  application.reviewed_by = adminId;
+  application.rejection_reason = rejectionReason;
+
+  return applicationRepo.save(application);
+};
+
+// approve trainer
+export const approveTrainerApplication = async (
+  applicationId: number,
+  adminId: number,
+) => {
+  return AppDataSource.transaction(async (manager) => {
+    const applicationRepo = manager.getRepository(TrainerApplication);
+    const trainerRepo = manager.getRepository(Trainer);
+    const trainerCertificateRepo = manager.getRepository(TrainerCertificate);
+    const applicationCertificateRepo = manager.getRepository(
+      TrainerApplicationCertificate,
+    );
+    const userRepo = manager.getRepository(User);
+
+    const application = await applicationRepo.findOne({
+      where: { id: applicationId },
+      relations: {
+        certificates: true,
+      },
+    });
+
+    if (!application) {
+      throw new Error("Không tìm thấy đơn đăng ký Trainer.");
+    }
+
+    if (application.status !== ApplicationStatus.Pending) {
+      throw new Error("Chỉ có thể duyệt đơn đang chờ duyệt.");
+    }
+
+    const trainer = trainerRepo.create({
+      user_id: application.user_id,
+      application_id: application.id,
+      bio: application.bio,
+      specialization: application.specialization,
+      avatar_url: application.avatar_url,
+      phone_number: application.phone_number,
+      address: application.address,
+      years_experience: application.years_experience ?? 0,
+      hourly_rate: application.hourly_rate,
+      is_active: true,
+      approved_at: new Date(),
+      approved_by: adminId,
+    });
+
+    const savedTrainer = await trainerRepo.save(trainer);
+
+    const trainerCertificates = application.certificates.map((cert) =>
+      trainerCertificateRepo.create({
+        trainer_id: savedTrainer.id,
+        cert_name: cert.cert_name,
+        issued_by: cert.issued_by,
+        image_url: cert.image_url,
+        certificate_number: cert.certificate_number,
+        issued_at: cert.issued_at,
+        expires_at: cert.expires_at,
+        status: CertificateStatus.Approved,
+        verified_at: new Date(),
+        verified_by: adminId,
+        source_application_certificate_id: cert.id,
+      }),
+    );
+
+    await trainerCertificateRepo.save(trainerCertificates);
+
+    for (const cert of application.certificates) {
+      cert.status = CertificateStatus.Approved;
+      cert.verified_at = new Date();
+      cert.verified_by = adminId;
+    }
+
+    await applicationCertificateRepo.save(application.certificates);
+
+    application.status = ApplicationStatus.Approved;
+    application.reviewed_at = new Date();
+    application.reviewed_by = adminId;
+
+    await applicationRepo.save(application);
+
+    await userRepo.update(
+      { id: application.user_id },
+      {
+        role_id: 5,
+        status: "active",
+      },
+    );
+
+    return {
+      trainer: savedTrainer,
+      certificates: trainerCertificates,
+    };
+  });
+};

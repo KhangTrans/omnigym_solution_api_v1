@@ -88,7 +88,7 @@ export const updateUserProfile = async (userId: number, updateData: UpdateProfil
       let trainer = user.trainer || trainerRepo.create({ user_id: userId });
       if (updateData.specialization) trainer.specialization = updateData.specialization;
       if (updateData.bio) trainer.bio = updateData.bio;
-      if (updateData.experience_years) trainer.experience_years = Number(updateData.experience_years);
+      if (updateData.experience_years) trainer.years_experience = Number(updateData.experience_years);
       await trainerRepo.save(trainer);
       break;
 

@@ -3,6 +3,8 @@ import { User } from '../models/user.entity.js';
 import { Customer } from '../models/customer.entity.js';
 import { Partner } from '../models/partner.entity.js';
 import { Trainer } from '../models/trainer.entity.js';
+import { TrainerApplication } from '../models/trainer-application.entity.js';
+import { ApplicationStatus } from '../models/trainer-status.enum.js';
 import { Staff } from '../models/staff.entity.js';
 import bcrypt from 'bcrypt';
 import nodemailer from 'nodemailer';
@@ -110,65 +112,87 @@ export const verifyOTP = async (identifier: string, otp: string) => {
 };
 
 export const registerUser = async (userData: RegisterUserDto) => {
-  const userRepository = AppDataSource.getRepository(User);
+  return AppDataSource.transaction(async (manager) => {
+    const userRepository = manager.getRepository(User);
 
-  // Check existing user again to be safe
-  const existingUser = await userRepository.findOne({
-    where: [
-      userData.email ? { email: userData.email } : null,
-      userData.phone_number ? { phone_number: userData.phone_number } : null
-    ].filter((condition): condition is { email: string } | { phone_number: string } => condition !== null)
-  });
-
-  if (existingUser) {
-    if (userData.email && existingUser.email === userData.email) {
-      throw new Error('Email đã được sử dụng.');
-    }
-    if (userData.phone_number && existingUser.phone_number === userData.phone_number) {
-      throw new Error('Số điện thoại đã được sử dụng.');
-    }
-  }
-
-  // Hash password
-  const hashedPassword = await bcrypt.hash(userData.password, 10);
-
-  const newUser = userRepository.create({
-    email: userData.email,
-    phone_number: userData.phone_number,
-    password: hashedPassword,
-    full_name: userData.full_name,
-    role_id: userData.role_id || 3, // Default role: Customer
-    status: 'active',
-  });
-
-  const savedUser = await userRepository.save(newUser);
-
-  // Create role-specific record
-  if (savedUser.role_id === 3) {
-    const customerRepo = AppDataSource.getRepository(Customer);
-    const customer = customerRepo.create({
-      user_id: savedUser.id,
-      dob: userData.dob,
-      height: userData.height,
-      weight: userData.weight,
-      gender: userData.gender
+    // Check existing user again to be safe
+    const existingUser = await userRepository.findOne({
+      where: [
+        userData.email ? { email: userData.email } : null,
+        userData.phone_number ? { phone_number: userData.phone_number } : null,
+      ].filter(
+        (condition): condition is { email: string } | { phone_number: string } =>
+          condition !== null,
+      ),
     });
-    await customerRepo.save(customer);
-  } else if (savedUser.role_id === 2) {
-    const staffRepo = AppDataSource.getRepository(Staff);
-    const staff = staffRepo.create({ user_id: savedUser.id });
-    await staffRepo.save(staff);
-  } else if (savedUser.role_id === 4) {
-    const partnerRepo = AppDataSource.getRepository(Partner);
-    const partner = partnerRepo.create({ user_id: savedUser.id });
-    await partnerRepo.save(partner);
-  } else if (savedUser.role_id === 5) {
-    const trainerRepo = AppDataSource.getRepository(Trainer);
-    const trainer = trainerRepo.create({ user_id: savedUser.id });
-    await trainerRepo.save(trainer);
-  }
 
-  return savedUser;
+    if (existingUser) {
+      if (userData.email && existingUser.email === userData.email) {
+        throw new Error('Email đã được sử dụng.');
+      }
+      if (userData.phone_number && existingUser.phone_number === userData.phone_number) {
+        throw new Error('Số điện thoại đã được sử dụng.');
+      }
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(userData.password, 10);
+    const roleId = userData.role_id || 3;
+    const isTrainerRegister = roleId === 5;
+
+    const newUser = userRepository.create({
+      email: userData.email,
+      phone_number: userData.phone_number,
+      password: hashedPassword,
+      full_name: userData.full_name,
+      role_id: roleId,
+      // Trainer đăng ký trước, chờ staff/admin approve mới active.
+      status: isTrainerRegister ? 'inactive' : 'active',
+    });
+
+    const savedUser = await userRepository.save(newUser);
+
+    // Create role-specific record
+    if (savedUser.role_id === 3) {
+      const customerRepo = manager.getRepository(Customer);
+      const customer = customerRepo.create({
+        user_id: savedUser.id,
+        dob: userData.dob,
+        height: userData.height,
+        weight: userData.weight,
+        gender: userData.gender,
+      });
+      await customerRepo.save(customer);
+    } else if (savedUser.role_id === 2) {
+      const staffRepo = manager.getRepository(Staff);
+      const staff = staffRepo.create({ user_id: savedUser.id });
+      await staffRepo.save(staff);
+    } else if (savedUser.role_id === 4) {
+      const partnerRepo = manager.getRepository(Partner);
+      const partner = partnerRepo.create({ user_id: savedUser.id });
+      await partnerRepo.save(partner);
+    } else if (savedUser.role_id === 5) {
+      const applicationRepo = manager.getRepository(TrainerApplication);
+      const trainerRepo = manager.getRepository(Trainer);
+
+      // DB trainers.application_id là NOT NULL, nên phải tạo application trước.
+      const application = applicationRepo.create({
+        user_id: savedUser.id,
+        status: ApplicationStatus.Draft,
+      });
+      const savedApplication = await applicationRepo.save(application);
+
+      // Trainer tồn tại ngay sau register nhưng chưa active cho tới khi approve.
+      const trainer = trainerRepo.create({
+        user_id: savedUser.id,
+        application_id: savedApplication.id,
+        is_active: false,
+      });
+      await trainerRepo.save(trainer);
+    }
+
+    return savedUser;
+  });
 };
 
 // Reset Password Logic
