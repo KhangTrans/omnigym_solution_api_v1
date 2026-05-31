@@ -8,6 +8,8 @@ import { Partner } from '../models/partner.entity.js';
 import { Trainer } from '../models/trainer.entity.js';
 import { Staff } from '../models/staff.entity.js';
 import { Branch } from '../models/branch.entity.js';
+import { BranchImage } from '../models/branch-image.entity.js';
+import { BranchFacility } from '../models/branch-facility.entity.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -22,7 +24,7 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_NAME,
   synchronize: true, // Set to false in production
   logging: false,
-  entities: [User, Role, Customer, Partner, Trainer, Staff, Branch, FAQ],
+  entities: [User, Role, Customer, Partner, Trainer, Staff, Branch, BranchImage, BranchFacility, FAQ],
   migrations: [],
   subscribers: [],
 });
