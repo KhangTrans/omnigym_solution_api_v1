@@ -1,14 +1,14 @@
-
-import express, { Application, Request, Response } from "express";
-import cors from "cors";
-import dotenv from "dotenv";
-import session from "express-session";
-import userRoutes from "./routes/user.routes.js";
-import authRoutes from "./routes/auth.routes.js";
-import faqRoutes from "./routes/faq.routes.js";
+import express, { Application, Request, Response } from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import session from 'express-session';
+import userRoutes from './routes/user.routes.js';
+import authRoutes from './routes/auth.routes.js';
+import faqRoutes from './routes/faq.routes.js';
+import postRoutes from './routes/post.routes.js';
 import branchRoutes from "./routes/branch.routes.js";
-import { AppDataSource } from "./config/data-source.js";
-import { Role } from "./models/role.entity.js";
+import { AppDataSource } from './config/data-source.js';
+import { Role } from './models/role.entity.js';
 import trainerApplicationRoutes from "./routes/trainer-application.routes.js";
 import membershipPackageRoutes from './routes/membership-package.routes.js';
 
@@ -64,9 +64,10 @@ AppDataSource.initialize()
   });
 
 // Routes
-app.use("/api/users", userRoutes);
-app.use("/api/auth", authRoutes);
-app.use("/api/faqs", faqRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/faqs', faqRoutes);
+app.use('/api/posts', postRoutes);
 app.use("/api/branches", branchRoutes);
 app.use("/api/trainer-applications", trainerApplicationRoutes);
 app.use('/api/membership-packages', membershipPackageRoutes);
