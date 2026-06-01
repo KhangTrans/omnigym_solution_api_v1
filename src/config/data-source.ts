@@ -13,9 +13,9 @@ import { BranchFacility } from "../models/branch-facility.entity.js";
 import { TrainerApplication } from "../models/trainer-application.entity.js";
 import { TrainerApplicationCertificate } from "../models/trainer-application-certificate.entity.js";
 import { TrainerCertificate } from "../models/trainer-certificate.entity.js";
+import { Post } from '../models/post.entity.js';
+import { PostImage } from '../models/post-image.entity.js';
 import dotenv from "dotenv";
-import { Blog } from '../models/blog.entity.js';
-
 
 dotenv.config();
 
@@ -43,8 +43,9 @@ export const AppDataSource = new DataSource({
     BranchImage,
     BranchFacility,
     FAQ,
+    Post,
+    PostImage
   ],
-  entities: [User, Role, Customer, Partner, Trainer, Staff, Branch, FAQ, Blog],
   migrations: [],
   subscribers: [],
 });

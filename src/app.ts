@@ -5,7 +5,7 @@ import session from 'express-session';
 import userRoutes from './routes/user.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import faqRoutes from './routes/faq.routes.js';
-import blogRoutes from './routes/blog.routes.js';
+import postRoutes from './routes/post.routes.js';
 import branchRoutes from "./routes/branch.routes.js";
 import { AppDataSource } from './config/data-source.js';
 import { Role } from './models/role.entity.js';
@@ -66,7 +66,7 @@ AppDataSource.initialize()
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/faqs', faqRoutes);
-app.use('/api/blogs', blogRoutes);
+app.use('/api/posts', postRoutes);
 app.use("/api/branches", branchRoutes);
 app.use("/api/trainer-applications", trainerApplicationRoutes);
 // Basic Route
