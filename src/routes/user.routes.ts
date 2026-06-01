@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getUsers, createUser, updateProfile, getProfile } from '../controllers/user.controller.js';
+import { getUsers, createUser, updateProfile, getProfile, updateUserStatusHandler } from '../controllers/user.controller.js';
 import { isAuthenticated, authorizeRole } from '../middlewares/auth.middleware.js';
 
 const router = Router();
@@ -8,8 +8,11 @@ const router = Router();
 router.get('/profile', isAuthenticated, getProfile);
 router.put('/profile', isAuthenticated, updateProfile);
 
-// Chỉ Admin mới được xem danh sách Users và tạo User mới
-router.get('/', isAuthenticated, authorizeRole(['Admin']), getUsers);
+// Admin và Staff được xem danh sách Users
+router.get('/', isAuthenticated, authorizeRole(['Admin', 'Staff']), getUsers);
 router.post('/', isAuthenticated, authorizeRole(['Admin']), createUser);
+
+// Admin và Staff được khóa/mở khóa tài khoản
+router.patch('/:id/status', isAuthenticated, authorizeRole(['Admin', 'Staff']), updateUserStatusHandler);
 
 export default router;
