@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { createFaq, deleteFaq, fetchFaqs, updateFaq } from '../services/faq.service.js';
 import { CreateFaqDto, GetFaqsQueryDto, UpdateFaqDto } from '../dtos/faq.dto.js';
+import { AppDataSource } from '../config/data-source.js';
+import { FAQ } from '../models/faq.entity.js';
 
 const parsePublishedFilter = (value: unknown): boolean | undefined => {
   if (value === 'true') return true;
@@ -104,6 +106,42 @@ export const getFaqs = async (req: Request, res: Response) => {
     const faqs = await fetchFaqs(query);
 
     res.json(faqs);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getPublicFaqs = async (req: Request, res: Response) => {
+  try {
+    const query: GetFaqsQueryDto = {
+      category: typeof req.query.category === 'string' ? req.query.category : undefined,
+      is_published: true,
+    };
+
+    const faqs = await fetchFaqs(query);
+
+    res.json(faqs);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const increaseFaqViewHandler = async (req: Request, res: Response) => {
+  try {
+    const faqId = Number(req.params.id);
+
+    if (!Number.isInteger(faqId) || faqId <= 0) {
+      return res.status(400).json({ message: 'FAQ không hợp lệ.' });
+    }
+
+    const faqRepository = AppDataSource.getRepository(FAQ);
+    const result = await faqRepository.increment({ id: faqId, is_published: true }, 'view_count', 1);
+
+    if (!result.affected) {
+      return res.status(404).json({ message: 'Không tìm thấy FAQ.' });
+    }
+
+    res.json({ message: 'Đã tăng lượt xem FAQ.' });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
