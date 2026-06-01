@@ -6,6 +6,7 @@ import {
   getMyTrainerApplicationHandler,
   approveTrainerApplicationHandler,
   rejectTrainerApplicationHandler,
+  saveTrainerApplicationDraftHandler,
 } from "../controllers/trainer-application.controller.js";
 import {
   isAuthenticated,
@@ -13,6 +14,8 @@ import {
 } from "../middlewares/auth.middleware.js";
 
 const router = Router();
+
+router.post("/draft", isAuthenticated, saveTrainerApplicationDraftHandler);
 
 router.post("/", isAuthenticated, createTrainerApplicationHandler);
 

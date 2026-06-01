@@ -6,6 +6,7 @@ import {
   getMyTrainerApplication,
   approveTrainerApplication,
   rejectTrainerApplication,
+  saveTrainerApplicationDraft,
 } from "../services/trainer-application.service.js";
 
 const validateCreateTrainerApplicationBody = (body: any): string | null => {
@@ -189,6 +190,28 @@ export const rejectTrainerApplicationHandler = async (
 
     return res.json({
       message: "Từ chối đơn Trainer thành công.",
+      data: application,
+    });
+  } catch (error: any) {
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+export const saveTrainerApplicationDraftHandler = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const userId = req.session.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Bạn cần đăng nhập." });
+    }
+
+    const application = await saveTrainerApplicationDraft(userId, req.body);
+
+    return res.json({
+      message: "Lưu nháp hồ sơ Trainer thành công.",
       data: application,
     });
   } catch (error: any) {
