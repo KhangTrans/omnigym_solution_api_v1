@@ -19,7 +19,6 @@ export const submitTrainerApplication = async (
     const certificateRepo = manager.getRepository(
       TrainerApplicationCertificate,
     );
-    const trainerRepo = manager.getRepository(Trainer);
 
     // Lấy đơn mới nhất của user. Pending/approved thì không cho gửi lại.
     // Draft/rejected thì cho cập nhật và gửi lại thành pending.
@@ -78,24 +77,6 @@ export const submitTrainerApplication = async (
     );
 
     await certificateRepo.save(certificates);
-
-    // Đảm bảo user có trainer record inactive trỏ tới application này.
-    let trainer = await trainerRepo.findOne({
-      where: { user_id: userId },
-    });
-
-    if (!trainer) {
-      trainer = trainerRepo.create({
-        user_id: userId,
-        application_id: savedApplication.id,
-        is_active: false,
-      });
-      await trainerRepo.save(trainer);
-    } else if (trainer.application_id !== savedApplication.id) {
-      trainer.application_id = savedApplication.id;
-      trainer.is_active = false;
-      await trainerRepo.save(trainer);
-    }
 
     return {
       ...savedApplication,
@@ -209,20 +190,28 @@ export const approveTrainerApplication = async (
       throw new Error("Chỉ có thể duyệt đơn đang chờ duyệt.");
     }
 
-    const trainer = trainerRepo.create({
-      user_id: application.user_id,
-      application_id: application.id,
-      bio: application.bio,
-      specialization: application.specialization,
-      avatar_url: application.avatar_url,
-      phone_number: application.phone_number,
-      address: application.address,
-      years_experience: application.years_experience ?? 0,
-      hourly_rate: application.hourly_rate,
-      is_active: true,
-      approved_at: new Date(),
-      approved_by: adminId,
+    let trainer = await trainerRepo.findOne({
+      where: { user_id: application.user_id },
     });
+
+    if (!trainer) {
+      trainer = trainerRepo.create({
+        user_id: application.user_id,
+        application_id: application.id,
+      });
+    }
+
+    trainer.application_id = application.id;
+    trainer.bio = application.bio;
+    trainer.specialization = application.specialization;
+    trainer.avatar_url = application.avatar_url;
+    trainer.phone_number = application.phone_number;
+    trainer.address = application.address;
+    trainer.years_experience = application.years_experience ?? 0;
+    trainer.hourly_rate = application.hourly_rate;
+    trainer.is_active = true;
+    trainer.approved_at = new Date();
+    trainer.approved_by = adminId;
 
     const savedTrainer = await trainerRepo.save(trainer);
 
@@ -270,5 +259,88 @@ export const approveTrainerApplication = async (
       trainer: savedTrainer,
       certificates: trainerCertificates,
     };
+  });
+};
+
+//save draft
+export const saveTrainerApplicationDraft = async (
+  userId: number,
+  dto: Partial<CreateTrainerApplicationDto>,
+) => {
+  return AppDataSource.transaction(async (manager) => {
+    const applicationRepo = manager.getRepository(TrainerApplication);
+    const certificateRepo = manager.getRepository(
+      TrainerApplicationCertificate,
+    );
+
+    let application = await applicationRepo.findOne({
+      where: { user_id: userId },
+      order: { created_at: "DESC" },
+    });
+
+    if (application?.status === ApplicationStatus.Pending) {
+      throw new Error(
+        "Đơn đăng ký Trainer của bạn đang chờ duyệt, không thể lưu nháp.",
+      );
+    }
+
+    if (application?.status === ApplicationStatus.Approved) {
+      throw new Error("Tài khoản Trainer của bạn đã được duyệt.");
+    }
+
+    if (!application) {
+      application = applicationRepo.create({
+        user_id: userId,
+        status: ApplicationStatus.Draft,
+      });
+    }
+
+    if (dto.bio !== undefined) application.bio = dto.bio;
+    if (dto.specialization !== undefined)
+      application.specialization = dto.specialization;
+    if (dto.avatar_url !== undefined) application.avatar_url = dto.avatar_url;
+    if (dto.phone_number !== undefined)
+      application.phone_number = dto.phone_number;
+    if (dto.address !== undefined) application.address = dto.address;
+    if (dto.years_experience !== undefined)
+      application.years_experience = dto.years_experience;
+    if (dto.hourly_rate !== undefined) application.hourly_rate = dto.hourly_rate;
+    if (dto.identity_number !== undefined)
+      application.identity_number = dto.identity_number;
+    if (dto.identity_image_url !== undefined)
+      application.identity_image_url = dto.identity_image_url;
+    application.status = ApplicationStatus.Draft;
+
+    const savedApplication = await applicationRepo.save(application);
+
+    if (Array.isArray(dto.certificates)) {
+      await certificateRepo.delete({
+        application_id: savedApplication.id,
+      });
+
+      if (dto.certificates.length > 0) {
+        const certificates = dto.certificates.map((cert) =>
+          certificateRepo.create({
+            application_id: savedApplication.id,
+            cert_name: cert.cert_name,
+            issued_by: cert.issued_by,
+            certificate_number: cert.certificate_number,
+            image_url: cert.image_url,
+            issued_at: cert.issued_at ? new Date(cert.issued_at) : undefined,
+            expires_at: cert.expires_at ? new Date(cert.expires_at) : undefined,
+            status: CertificateStatus.Pending,
+          }),
+        );
+
+        await certificateRepo.save(certificates);
+      }
+    }
+
+    return await applicationRepo.findOne({
+      where: { id: savedApplication.id },
+      relations: {
+        certificates: true,
+      },
+    });
   });
 };

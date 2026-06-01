@@ -1,16 +1,15 @@
-import { AppDataSource } from '../config/data-source.js';
-import { User } from '../models/user.entity.js';
-import { Customer } from '../models/customer.entity.js';
-import { Partner } from '../models/partner.entity.js';
-import { Trainer } from '../models/trainer.entity.js';
-import { TrainerApplication } from '../models/trainer-application.entity.js';
-import { ApplicationStatus } from '../models/trainer-status.enum.js';
-import { Staff } from '../models/staff.entity.js';
-import bcrypt from 'bcrypt';
-import nodemailer from 'nodemailer';
-import dotenv from 'dotenv';
-import { RegisterUserDto } from '../dtos/auth.dto.js';
-import { OAuth2Client } from 'google-auth-library';
+import { AppDataSource } from "../config/data-source.js";
+import { User } from "../models/user.entity.js";
+import { Customer } from "../models/customer.entity.js";
+import { Partner } from "../models/partner.entity.js";
+import { TrainerApplication } from "../models/trainer-application.entity.js";
+import { ApplicationStatus } from "../models/trainer-status.enum.js";
+import { Staff } from "../models/staff.entity.js";
+import bcrypt from "bcrypt";
+import nodemailer from "nodemailer";
+import dotenv from "dotenv";
+import { RegisterUserDto } from "../dtos/auth.dto.js";
+import { OAuth2Client } from "google-auth-library";
 
 dotenv.config();
 
@@ -26,7 +25,7 @@ const otpStore: Record<string, OTPData> = {};
 
 const transporter = nodemailer.createTransport({
   host: process.env.MAIL_HOST,
-  port: parseInt(process.env.MAIL_PORT || '587'),
+  port: parseInt(process.env.MAIL_PORT || "587"),
   secure: false, // true for 465, false for other ports
   auth: {
     user: process.env.MAIL_USER,
@@ -38,11 +37,17 @@ export const sendOTP = async (identifier: string) => {
   // Check if user already exists
   const userRepository = AppDataSource.getRepository(User);
   const existingUser = await userRepository.findOne({
-    where: identifier.includes('@') ? { email: identifier } : { phone_number: identifier }
+    where: identifier.includes("@")
+      ? { email: identifier }
+      : { phone_number: identifier },
   });
 
   if (existingUser) {
-    throw new Error(identifier.includes('@') ? 'Email đã được đăng ký.' : 'Số điện thoại đã được đăng ký.');
+    throw new Error(
+      identifier.includes("@")
+        ? "Email đã được đăng ký."
+        : "Số điện thoại đã được đăng ký.",
+    );
   }
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -51,12 +56,12 @@ export const sendOTP = async (identifier: string) => {
   otpStore[identifier] = { otp, expiresAt };
 
   // If it's an email, send via nodemailer
-  if (identifier.includes('@')) {
+  if (identifier.includes("@")) {
     try {
       await transporter.sendMail({
         from: process.env.MAIL_FROM,
         to: identifier,
-        subject: 'Mã xác thực đăng ký tài khoản OmniGym',
+        subject: "Mã xác thực đăng ký tài khoản OmniGym",
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 10px;">
             <div style="text-align: center;">
@@ -80,7 +85,7 @@ export const sendOTP = async (identifier: string) => {
       });
       console.log(`[Email] OTP sent to ${identifier}`);
     } catch (error) {
-      console.error('Error sending email:', error);
+      console.error("Error sending email:", error);
       // Still log to console for debugging if email fails
       console.log(`[OTP Backup] Sent to ${identifier}: ${otp}`);
     }
@@ -89,7 +94,7 @@ export const sendOTP = async (identifier: string) => {
     console.log(`[OTP] Sent to ${identifier}: ${otp}`);
   }
 
-  return { message: 'OTP đã được gửi. Vui lòng kiểm tra email của bạn.' };
+  return { message: "OTP đã được gửi. Vui lòng kiểm tra email của bạn." };
 };
 
 export const verifyOTP = async (identifier: string, otp: string) => {
@@ -121,17 +126,22 @@ export const registerUser = async (userData: RegisterUserDto) => {
         userData.email ? { email: userData.email } : null,
         userData.phone_number ? { phone_number: userData.phone_number } : null,
       ].filter(
-        (condition): condition is { email: string } | { phone_number: string } =>
+        (
+          condition,
+        ): condition is { email: string } | { phone_number: string } =>
           condition !== null,
       ),
     });
 
     if (existingUser) {
       if (userData.email && existingUser.email === userData.email) {
-        throw new Error('Email đã được sử dụng.');
+        throw new Error("Email đã được sử dụng.");
       }
-      if (userData.phone_number && existingUser.phone_number === userData.phone_number) {
-        throw new Error('Số điện thoại đã được sử dụng.');
+      if (
+        userData.phone_number &&
+        existingUser.phone_number === userData.phone_number
+      ) {
+        throw new Error("Số điện thoại đã được sử dụng.");
       }
     }
 
@@ -147,7 +157,7 @@ export const registerUser = async (userData: RegisterUserDto) => {
       full_name: userData.full_name,
       role_id: roleId,
       // Trainer đăng ký trước, chờ staff/admin approve mới active.
-      status: isTrainerRegister ? 'inactive' : 'active',
+      status: isTrainerRegister ? "inactive" : "active",
     });
 
     const savedUser = await userRepository.save(newUser);
@@ -172,23 +182,7 @@ export const registerUser = async (userData: RegisterUserDto) => {
       const partner = partnerRepo.create({ user_id: savedUser.id });
       await partnerRepo.save(partner);
     } else if (savedUser.role_id === 5) {
-      const applicationRepo = manager.getRepository(TrainerApplication);
-      const trainerRepo = manager.getRepository(Trainer);
-
-      // DB trainers.application_id là NOT NULL, nên phải tạo application trước.
-      const application = applicationRepo.create({
-        user_id: savedUser.id,
-        status: ApplicationStatus.Draft,
-      });
-      const savedApplication = await applicationRepo.save(application);
-
-      // Trainer tồn tại ngay sau register nhưng chưa active cho tới khi approve.
-      const trainer = trainerRepo.create({
-        user_id: savedUser.id,
-        application_id: savedApplication.id,
-        is_active: false,
-      });
-      await trainerRepo.save(trainer);
+      // Trainer application sẽ chỉ được tạo khi user bấm Save draft hoặc Submit.
     }
 
     return savedUser;
@@ -196,14 +190,14 @@ export const registerUser = async (userData: RegisterUserDto) => {
 };
 
 // Reset Password Logic
-const resetStore: Record<string, { otp: string, expiresAt: number }> = {};
+const resetStore: Record<string, { otp: string; expiresAt: number }> = {};
 
 export const initiateForgotPassword = async (email: string) => {
   const userRepository = AppDataSource.getRepository(User);
   const user = await userRepository.findOne({ where: { email } });
 
   if (!user) {
-    throw new Error('Email không tồn tại trên hệ thống.');
+    throw new Error("Email không tồn tại trên hệ thống.");
   }
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -214,7 +208,7 @@ export const initiateForgotPassword = async (email: string) => {
   await transporter.sendMail({
     from: process.env.MAIL_FROM,
     to: email,
-    subject: 'Yêu cầu khôi phục mật khẩu - OmniGym',
+    subject: "Yêu cầu khôi phục mật khẩu - OmniGym",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 10px;">
         <h2 style="color: #f44336; text-align: center;">Khôi phục mật khẩu</h2>
@@ -231,60 +225,70 @@ export const initiateForgotPassword = async (email: string) => {
     `,
   });
 
-  return { message: 'Mã khôi phục đã được gửi vào email của bạn.' };
+  return { message: "Mã khôi phục đã được gửi vào email của bạn." };
 };
 
-export const resetPassword = async (email: string, otp: string, newPass: string) => {
+export const resetPassword = async (
+  email: string,
+  otp: string,
+  newPass: string,
+) => {
   const data = resetStore[email];
 
   if (!data || data.otp !== otp || Date.now() > data.expiresAt) {
-    throw new Error('Mã OTP không chính xác hoặc đã hết hạn.');
+    throw new Error("Mã OTP không chính xác hoặc đã hết hạn.");
   }
 
   const userRepository = AppDataSource.getRepository(User);
   const user = await userRepository.findOne({ where: { email } });
 
-  if (!user) throw new Error('Người dùng không tồn tại.');
+  if (!user) throw new Error("Người dùng không tồn tại.");
 
   user.password = await bcrypt.hash(newPass, 10);
   await userRepository.save(user);
 
   delete resetStore[email];
-  return { message: 'Mật khẩu đã được thay đổi thành công.' };
+  return { message: "Mật khẩu đã được thay đổi thành công." };
 };
 
-export const changePassword = async (userId: number, oldPass: string, newPass: string) => {
+export const changePassword = async (
+  userId: number,
+  oldPass: string,
+  newPass: string,
+) => {
   const userRepository = AppDataSource.getRepository(User);
   const user = await userRepository.findOne({ where: { id: userId } });
 
-  if (!user) throw new Error('Người dùng không tồn tại.');
+  if (!user) throw new Error("Người dùng không tồn tại.");
 
   const isOldMatch = await bcrypt.compare(oldPass, user.password);
   if (!isOldMatch) {
-    throw new Error('Mật khẩu cũ không chính xác.');
+    throw new Error("Mật khẩu cũ không chính xác.");
   }
 
   user.password = await bcrypt.hash(newPass, 10);
   await userRepository.save(user);
 
-  return { message: 'Thay đổi mật khẩu thành công.' };
+  return { message: "Thay đổi mật khẩu thành công." };
 };
 
 export const loginUser = async (identifier: string, password: string) => {
   const userRepository = AppDataSource.getRepository(User);
-  
+
   const user = await userRepository.findOne({
-    where: identifier.includes('@') ? { email: identifier } : { phone_number: identifier },
-    relations: { role: true }
+    where: identifier.includes("@")
+      ? { email: identifier }
+      : { phone_number: identifier },
+    relations: { role: true },
   });
 
   if (!user) {
-    throw new Error('User not found');
+    throw new Error("User not found");
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) {
-    throw new Error('Invalid password');
+    throw new Error("Invalid password");
   }
 
   return user;
@@ -295,12 +299,12 @@ export const verifyGoogleToken = async (idToken: string) => {
     idToken,
     audience: [
       process.env.GOOGLE_CLIENT_ID_WEB!,
-      process.env.GOOGLE_CLIENT_ID_MOBILE!
+      process.env.GOOGLE_CLIENT_ID_MOBILE!,
     ],
   });
   const payload = ticket.getPayload();
   if (!payload) {
-    throw new Error('Invalid Google token');
+    throw new Error("Invalid Google token");
   }
   return payload;
 };
@@ -311,7 +315,7 @@ export const loginWithGoogle = async (googlePayload: any) => {
 
   let user = await userRepository.findOne({
     where: { email },
-    relations: { role: true }
+    relations: { role: true },
   });
 
   if (!user) {
@@ -322,15 +326,15 @@ export const loginWithGoogle = async (googlePayload: any) => {
       avatar_url: picture,
       password: await bcrypt.hash(googleId, 10), // Dummy password for social login
       role_id: 3, // Default role: Customer
-      status: 'active'
+      status: "active",
     });
     await userRepository.save(user);
-    
+
     // Re-fetch to get role info
-    user = await userRepository.findOne({
+    user = (await userRepository.findOne({
       where: { id: user.id },
-      relations: { role: true }
-    }) as User;
+      relations: { role: true },
+    })) as User;
   } else {
     // Update avatar if missing or changed
     if (user.avatar_url !== picture) {
