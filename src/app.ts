@@ -1,13 +1,14 @@
-import express, { Application, Request, Response } from "express";
-import cors from "cors";
-import dotenv from "dotenv";
-import session from "express-session";
-import userRoutes from "./routes/user.routes.js";
-import authRoutes from "./routes/auth.routes.js";
-import faqRoutes from "./routes/faq.routes.js";
+import express, { Application, Request, Response } from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import session from 'express-session';
+import userRoutes from './routes/user.routes.js';
+import authRoutes from './routes/auth.routes.js';
+import faqRoutes from './routes/faq.routes.js';
+import blogRoutes from './routes/blog.routes.js';
 import branchRoutes from "./routes/branch.routes.js";
-import { AppDataSource } from "./config/data-source.js";
-import { Role } from "./models/role.entity.js";
+import { AppDataSource } from './config/data-source.js';
+import { Role } from './models/role.entity.js';
 import trainerApplicationRoutes from "./routes/trainer-application.routes.js";
 
 dotenv.config();
@@ -62,12 +63,12 @@ AppDataSource.initialize()
   });
 
 // Routes
-app.use("/api/users", userRoutes);
-app.use("/api/auth", authRoutes);
-app.use("/api/faqs", faqRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/faqs', faqRoutes);
+app.use('/api/blogs', blogRoutes);
 app.use("/api/branches", branchRoutes);
 app.use("/api/trainer-applications", trainerApplicationRoutes);
-
 // Basic Route
 app.get("/", (req: Request, res: Response) => {
   res.json({ message: "Welcome to OmniGym Solution API" });

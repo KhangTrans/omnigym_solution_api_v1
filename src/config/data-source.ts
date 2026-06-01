@@ -14,6 +14,8 @@ import { TrainerApplication } from "../models/trainer-application.entity.js";
 import { TrainerApplicationCertificate } from "../models/trainer-application-certificate.entity.js";
 import { TrainerCertificate } from "../models/trainer-certificate.entity.js";
 import dotenv from "dotenv";
+import { Blog } from '../models/blog.entity.js';
+
 
 dotenv.config();
 
@@ -42,6 +44,7 @@ export const AppDataSource = new DataSource({
     BranchFacility,
     FAQ,
   ],
+  entities: [User, Role, Customer, Partner, Trainer, Staff, Branch, FAQ, Blog],
   migrations: [],
   subscribers: [],
 });
