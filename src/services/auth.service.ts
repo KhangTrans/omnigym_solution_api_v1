@@ -287,6 +287,10 @@ export const loginUser = async (identifier: string, password: string) => {
     throw new Error('Invalid password');
   }
 
+  if (user.status?.toLowerCase() === 'locked') {
+    throw new Error('Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.');
+  }
+
   return user;
 };
 
@@ -332,6 +336,9 @@ export const loginWithGoogle = async (googlePayload: any) => {
       relations: { role: true }
     }) as User;
   } else {
+    if (user.status?.toLowerCase() === 'locked') {
+      throw new Error('Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.');
+    }
     // Update avatar if missing or changed
     if (user.avatar_url !== picture) {
       user.avatar_url = picture;

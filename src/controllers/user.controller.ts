@@ -1,11 +1,16 @@
 import { Request, Response } from 'express';
-import { fetchUsers, createNewUser, updateUserProfile, fetchUserProfile } from '../services/user.service.js';
+import { fetchUsers, createNewUser, updateUserProfile, fetchUserProfile, updateUserStatus } from '../services/user.service.js';
 import { UpdateProfileDto, CreateUserDto } from '../dtos/user.dto.js';
 import { uploadImage } from '../utils/cloudinary.js';
 
 export const getUsers = async (req: Request, res: Response) => {
-  const users = await fetchUsers();
-  res.json(users);
+  try {
+    const users = await fetchUsers();
+    const sanitized = users.map(({ password, ...rest }) => rest);
+    res.json(sanitized);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 export const getProfile = async (req: Request, res: Response) => {
@@ -58,4 +63,29 @@ export const createUser = (req: Request, res: Response) => {
   }
   const newUser = createNewUser({ name });
   res.status(201).json(newUser);
+};
+
+export const updateUserStatusHandler = async (req: Request, res: Response) => {
+  try {
+    const userId = Number(req.params.id);
+    if (!Number.isFinite(userId)) {
+      return res.status(400).json({ message: 'Invalid user id' });
+    }
+
+    const { status } = req.body as { status?: string };
+    const normalizedStatus = String(status || '').toLowerCase();
+    if (!['active', 'locked'].includes(normalizedStatus)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    const updatedUser = await updateUserStatus(userId, normalizedStatus);
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const { password, ...rest } = updatedUser;
+    return res.json({ message: 'Status updated successfully', user: rest });
+  } catch (error: any) {
+    return res.status(500).json({ message: error.message });
+  }
 };

@@ -114,6 +114,25 @@ export const updateUserProfile = async (userId: number, updateData: UpdateProfil
   return updatedUser;
 };
 
+export const updateUserStatus = async (userId: number, status: string) => {
+  const userRepository = AppDataSource.getRepository(User);
+  const user = await userRepository.findOne({
+    where: { id: userId },
+    relations: { role: true, customer: true, partner: true, trainer: true, staff: true }
+  });
+
+  if (!user) {
+    return null;
+  }
+
+  user.status = status;
+  await userRepository.save(user);
+
+  await deleteCache('users:all');
+
+  return user;
+};
+
 export const createNewUser = (userData: CreateUserDto) => {
   // Logic to save user to database would go here
   return { id: Date.now(), ...userData };
