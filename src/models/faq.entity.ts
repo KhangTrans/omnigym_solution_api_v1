@@ -3,6 +3,7 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  UpdateDateColumn,
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
@@ -38,6 +39,9 @@ export class FAQ {
   @Column({ type: 'timestamp', nullable: true })
   published_at?: Date;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'timestamptz' })
   created_at!: Date;
+
+  @UpdateDateColumn({ type: 'timestamptz' })
+  updated_at!: Date;
 }
