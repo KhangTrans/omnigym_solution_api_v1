@@ -1,3 +1,4 @@
+import axios from "axios";
 import { AppDataSource } from "../config/data-source.js";
 import { TrainerApplication } from "../models/trainer-application.entity.js";
 import { TrainerApplicationCertificate } from "../models/trainer-application-certificate.entity.js";
@@ -9,6 +10,36 @@ import {
   ApplicationStatus,
   CertificateStatus,
 } from "../models/trainer-status.enum.js";
+
+const sendTrainerApprovedWebhook = async (payload: any) => {
+  const webhookUrl = process.env.N8N_TRAINER_APPROVED_WEBHOOK_URL;
+
+  if (!webhookUrl) {
+    return;
+  }
+
+  await axios.post(webhookUrl, payload, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+    timeout: 10000,
+  });
+};
+
+const sendTrainerRejectedWebhook = async (payload: any) => {
+  const webhookUrl = process.env.N8N_TRAINER_APPROVED_WEBHOOK_URL;
+
+  if (!webhookUrl) {
+    return;
+  }
+
+  await axios.post(webhookUrl, payload, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+    timeout: 10000,
+  });
+};
 
 export const submitTrainerApplication = async (
   userId: number,
@@ -178,6 +209,7 @@ export const approveTrainerApplication = async (
     const application = await applicationRepo.findOne({
       where: { id: applicationId },
       relations: {
+        user: true,
         certificates: true,
       },
     });
@@ -255,9 +287,26 @@ export const approveTrainerApplication = async (
       },
     );
 
+    const webhookPayload = {
+      event: "trainer_approved",
+      status: application.status,
+      userId: application.user_id,
+      applicationId: application.id,
+      phone: application.phone_number,
+      // rejectReason: application.rejection_reason,
+      message: "Xin chào, hồ sơ huấn luyện viên của bạn đã được duyệt.",
+    };
+
+    try {
+      await sendTrainerApprovedWebhook(webhookPayload);
+    } catch (error) {
+      console.error("n8n trainer approved webhook failed", error);
+    }
+
     return {
       trainer: savedTrainer,
       certificates: trainerCertificates,
+      webhook_sent: Boolean(process.env.N8N_TRAINER_APPROVED_WEBHOOK_URL),
     };
   });
 };
@@ -304,7 +353,8 @@ export const saveTrainerApplicationDraft = async (
     if (dto.address !== undefined) application.address = dto.address;
     if (dto.years_experience !== undefined)
       application.years_experience = dto.years_experience;
-    if (dto.hourly_rate !== undefined) application.hourly_rate = dto.hourly_rate;
+    if (dto.hourly_rate !== undefined)
+      application.hourly_rate = dto.hourly_rate;
     if (dto.identity_number !== undefined)
       application.identity_number = dto.identity_number;
     if (dto.identity_image_url !== undefined)
