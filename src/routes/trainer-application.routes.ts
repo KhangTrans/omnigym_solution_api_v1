@@ -24,28 +24,28 @@ router.get("/me", isAuthenticated, getMyTrainerApplicationHandler);
 router.get(
   "/",
   isAuthenticated,
-  authorizeRole(["Admin", "Staff", "Partner"]),
+  authorizeRole(["Admin", "Staff"]),
   getTrainerApplicationsHandler,
 );
 
 router.get(
   "/:id",
   isAuthenticated,
-  authorizeRole(["Admin", "Staff", "Partner"]),
+  authorizeRole(["Admin", "Staff"]),
   getTrainerApplicationByIdHandler,
 );
 
 router.patch(
   "/:id/approve",
   isAuthenticated,
-  authorizeRole(["Admin", "Staff", "Partner"]),
+  authorizeRole(["Admin", "Staff"]),
   approveTrainerApplicationHandler,
 );
 
 router.patch(
   "/:id/reject",
   isAuthenticated,
-  authorizeRole(["Admin", "Staff", "Partner"]),
+  authorizeRole(["Admin", "Staff"]),
   rejectTrainerApplicationHandler,
 );
 
