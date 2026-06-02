@@ -15,6 +15,20 @@ export class BranchImageDto {
   sort_order?: number;
 }
 
+export class BranchFacilityImageDto {
+  @IsNotEmpty()
+  @IsString()
+  image_url!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  is_cover?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  sort_order?: number;
+}
+
 export class BranchFacilityDto {
   @IsNotEmpty()
   @IsString()
@@ -27,6 +41,12 @@ export class BranchFacilityDto {
   @IsOptional()
   @IsString()
   icon_url?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BranchFacilityImageDto)
+  images?: BranchFacilityImageDto[];
 }
 
 export class CreateBranchDto {

@@ -10,6 +10,7 @@ import { Staff } from "../models/staff.entity.js";
 import { Branch } from "../models/branch.entity.js";
 import { BranchImage } from "../models/branch-image.entity.js";
 import { BranchFacility } from "../models/branch-facility.entity.js";
+import { BranchFacilityImage } from "../models/branch-facility-image.entity.js";
 import { TrainerApplication } from "../models/trainer-application.entity.js";
 import { TrainerApplicationCertificate } from "../models/trainer-application-certificate.entity.js";
 import { TrainerCertificate } from "../models/trainer-certificate.entity.js";
@@ -44,6 +45,7 @@ export const AppDataSource = new DataSource({
     Branch,
     BranchImage,
     BranchFacility,
+    BranchFacilityImage,
     FAQ,
     MembershipPackage,
     MembershipBranch,

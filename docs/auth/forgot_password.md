@@ -22,9 +22,11 @@ Cho phép người dùng khôi phục lại mật khẩu khi bị quên thông q
 Yêu cầu khôi phục mật khẩu.
 
 **Request**
+
 - `email` (string, required) - Email đã đăng ký trong hệ thống.
 
 **Response**
+
 - **200 - Thành công**: `{ "message": "Mã khôi phục đã được gửi vào email của bạn." }`
 - **400 - Lỗi**: `{ "message": "Email không tồn tại trên hệ thống." }`
 
@@ -35,11 +37,13 @@ Yêu cầu khôi phục mật khẩu.
 Xác nhận mã OTP và đặt lại mật khẩu mới.
 
 **Request**
+
 - `email` (string, required)
 - `otp` (string, required) - Mã 6 số được gửi qua email.
 - `newPassword` (string, required) - Mật khẩu mới muốn thay đổi.
 
 **Response**
+
 - **200 - Thành công**: `{ "message": "Mật khẩu đã được thay đổi thành công." }`
 - **400 - Thất bại**: `{ "message": "Mã OTP không chính xác hoặc đã hết hạn." }` hoặc `{ "message": "Người dùng không tồn tại." }`
 

@@ -2,6 +2,7 @@ import { AppDataSource } from '../config/data-source.js';
 import { Branch } from '../models/branch.entity.js';
 import { BranchImage } from '../models/branch-image.entity.js';
 import { BranchFacility } from '../models/branch-facility.entity.js';
+import { BranchFacilityImage } from '../models/branch-facility-image.entity.js';
 import { CreateBranchDto } from '../dtos/branch.dto.js';
 
 export const createBranch = async (data: CreateBranchDto) => {
@@ -37,13 +38,27 @@ export const createBranch = async (data: CreateBranchDto) => {
     // 3. Save Branch Facilities if any
     if (data.facilities && data.facilities.length > 0) {
       const facilityRepo = transactionalEntityManager.getRepository(BranchFacility);
-      const branchFacilities = data.facilities.map(facility => facilityRepo.create({
-        branch_id: savedBranch.id,
-        facility_name: facility.facility_name,
-        description: facility.description,
-        icon_url: facility.icon_url
-      }));
-      await transactionalEntityManager.save(branchFacilities);
+      const facilityImageRepo = transactionalEntityManager.getRepository(BranchFacilityImage);
+      
+      for (const facData of data.facilities) {
+        const newFacility = facilityRepo.create({
+          branch_id: savedBranch.id,
+          facility_name: facData.facility_name,
+          description: facData.description,
+          icon_url: facData.icon_url
+        });
+        const savedFacility = await transactionalEntityManager.save(newFacility);
+
+        if (facData.images && facData.images.length > 0) {
+          const facImages = facData.images.map(img => facilityImageRepo.create({
+            facility_id: savedFacility.id,
+            image_url: img.image_url,
+            is_cover: img.is_cover || false,
+            sort_order: img.sort_order || 0
+          }));
+          await transactionalEntityManager.save(facImages);
+        }
+      }
     }
 
     // Return the branch with its relations
@@ -72,7 +87,33 @@ export const getBranchById = async (branchId: number) => {
     throw new Error('Branch not found');
   }
 
-  return branch;
+  const imageRepo = AppDataSource.getRepository(BranchImage);
+  const facilityRepo = AppDataSource.getRepository(BranchFacility);
+
+  const [images, facilities] = await Promise.all([
+    imageRepo.find({ where: { branch_id: branchId }, order: { sort_order: 'ASC' } }),
+    facilityRepo.find({ where: { branch_id: branchId } })
+  ]);
+
+  const facilityImageRepo = AppDataSource.getRepository(BranchFacilityImage);
+  const facilitiesWithImages = await Promise.all(
+    facilities.map(async (fac) => {
+      const facImages = await facilityImageRepo.find({
+        where: { facility_id: fac.id },
+        order: { sort_order: 'ASC' }
+      });
+      return {
+        ...fac,
+        images: facImages
+      };
+    })
+  );
+
+  return {
+    ...branch,
+    images,
+    facilities: facilitiesWithImages
+  };
 };
 
 export const updateBranch = async (branchId: number, data: Partial<CreateBranchDto>) => {
@@ -115,16 +156,34 @@ export const updateBranch = async (branchId: number, data: Partial<CreateBranchD
     // Update facilities if provided
     if (data.facilities && data.facilities.length > 0) {
       const facilityRepo = transactionalEntityManager.getRepository(BranchFacility);
-      // Delete old facilities
+      const facilityImageRepo = transactionalEntityManager.getRepository(BranchFacilityImage);
+
+      // Delete old facility images and facilities
+      const oldFacilities = await facilityRepo.find({ where: { branch_id: branchId } });
+      for (const oldFac of oldFacilities) {
+        await facilityImageRepo.delete({ facility_id: oldFac.id });
+      }
       await facilityRepo.delete({ branch_id: branchId });
 
-      const branchFacilities = data.facilities.map(facility => facilityRepo.create({
-        branch_id: branchId,
-        facility_name: facility.facility_name,
-        description: facility.description,
-        icon_url: facility.icon_url
-      }));
-      await transactionalEntityManager.save(branchFacilities);
+      for (const facData of data.facilities) {
+        const newFacility = facilityRepo.create({
+          branch_id: branchId,
+          facility_name: facData.facility_name,
+          description: facData.description,
+          icon_url: facData.icon_url
+        });
+        const savedFacility = await transactionalEntityManager.save(newFacility);
+
+        if (facData.images && facData.images.length > 0) {
+          const facImages = facData.images.map(img => facilityImageRepo.create({
+            facility_id: savedFacility.id,
+            image_url: img.image_url,
+            is_cover: img.is_cover || false,
+            sort_order: img.sort_order || 0
+          }));
+          await transactionalEntityManager.save(facImages);
+        }
+      }
     }
 
     return updatedBranch;
