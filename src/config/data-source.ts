@@ -18,6 +18,8 @@ import { MembershipPackage } from "../models/membership-package.entity.js";
 import { MembershipBranch } from "../models/membership-branch.entity.js";
 import { Post } from "../models/post.entity.js";
 import { PostImage } from "../models/post-image.entity.js";
+import { CustomerSubscription } from "../models/customer-subscription.entity.js";
+import { Transaction } from "../models/transaction.entity.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -51,8 +53,11 @@ export const AppDataSource = new DataSource({
     MembershipBranch,
     Post,
     PostImage,
+    CustomerSubscription,
+    Transaction,
   ],
 
   migrations: [],
   subscribers: [],
 });
+

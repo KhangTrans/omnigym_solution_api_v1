@@ -11,6 +11,7 @@ import { AppDataSource } from './config/data-source.js';
 import { Role } from './models/role.entity.js';
 import trainerApplicationRoutes from "./routes/trainer-application.routes.js";
 import membershipPackageRoutes from './routes/membership-package.routes.js';
+import paymentRoutes from './routes/payment.routes.js';
 
 dotenv.config();
 
@@ -71,6 +72,8 @@ app.use('/api/posts', postRoutes);
 app.use("/api/branches", branchRoutes);
 app.use("/api/trainer-applications", trainerApplicationRoutes);
 app.use('/api/membership-packages', membershipPackageRoutes);
+app.use('/api/payments', paymentRoutes);
+
 
 // Basic Route
 app.get("/", (req: Request, res: Response) => {
