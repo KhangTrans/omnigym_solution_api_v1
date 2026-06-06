@@ -130,9 +130,8 @@ export const getProfile = async (req: Request, res: Response) => {
       relations: { 
         role: true, 
         customer: true,
-        trainer: true,
-        partner: true,
-        staff: true
+        trainer: { branch: true },
+        staff: { branch: true }
       }
     });
 

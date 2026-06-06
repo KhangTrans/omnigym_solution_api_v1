@@ -3,7 +3,7 @@ import { createFaqHandler, deleteFaqHandler, getFaqs, getPublicFaqs, increaseFaq
 import { isAuthenticated, authorizeRole } from '../middlewares/auth.middleware.js';
 
 const router = Router();
-const faqManagerRoles = ['Admin', 'Staff', 'Partner'];
+const faqManagerRoles = ['Admin', 'Staff', 'BranchManager'];
 
 router.get('/public', getPublicFaqs);
 router.post('/public/:id/view', increaseFaqViewHandler);

@@ -22,6 +22,7 @@ export interface UpdateProfileDto {
   logo_url?: string;
   // Staff fields
   department?: string;
+  branch_id?: number;
 }
 
 export interface CreateUserDto {

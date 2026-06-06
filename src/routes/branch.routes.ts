@@ -1,13 +1,17 @@
 import { Router } from 'express';
 import { createBranch, getBranches, getBranchDetail, updateBranch } from '../controllers/branch.controller.js';
-import { isAuthenticated } from '../middlewares/auth.middleware.js';
+import { isAuthenticated, authorizeRole } from '../middlewares/auth.middleware.js';
 
 const router = Router();
 
-// To be secure, you might want to add authorizeRole(['Partner', 'Admin']) here later
-router.post('/', isAuthenticated, createBranch);
+// Chỉ Admin mới được tạo chi nhánh mới
+router.post('/', isAuthenticated, authorizeRole(['Admin']), createBranch);
+
+// Công khai danh sách và chi tiết chi nhánh
 router.get('/', getBranches);
 router.get('/:id', getBranchDetail);
-router.put('/:id', isAuthenticated, updateBranch);
+
+// Chỉ Admin hoặc BranchManager được gán quản lý chi nhánh mới được sửa
+router.put('/:id', isAuthenticated, authorizeRole(['Admin', 'BranchManager']), updateBranch);
 
 export default router;

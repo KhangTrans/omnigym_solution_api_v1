@@ -10,10 +10,10 @@ router.get('/', getAllPackages);
 // Công khai: Xem chi tiết gói
 router.get('/:id', getPackageById);
 
-// Chỉ Admin/Partner mới tạo gói
-router.post('/', isAuthenticated, authorizeRole(['Admin', 'Partner']), createNewPackage);
+// Chỉ Admin mới tạo gói
+router.post('/', isAuthenticated, authorizeRole(['Admin']), createNewPackage);
 
-// Chỉ Admin/Partner mới cập nhật gói
-router.put('/:id', isAuthenticated, authorizeRole(['Admin', 'Partner']), updatePackageById);
+// Chỉ Admin mới cập nhật gói
+router.put('/:id', isAuthenticated, authorizeRole(['Admin']), updatePackageById);
 
 export default router;

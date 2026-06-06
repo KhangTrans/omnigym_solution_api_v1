@@ -1,7 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToOne } from 'typeorm';
 import { Role } from './role.entity.js';
 import { Customer } from './customer.entity.js';
-import { Partner } from './partner.entity.js';
 import { Trainer } from './trainer.entity.js';
 import { Staff } from './staff.entity.js';
 
@@ -19,9 +18,6 @@ export class User {
 
   @OneToOne(() => Customer, (customer) => customer.user)
   customer?: Customer;
-
-  @OneToOne(() => Partner, (partner) => partner.user)
-  partner?: Partner;
 
   @OneToOne(() => Trainer, (trainer) => trainer.user)
   trainer?: Trainer;

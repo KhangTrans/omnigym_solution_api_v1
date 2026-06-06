@@ -24,7 +24,7 @@ export class TrainerApplicationCertificate {
     (application) => application.certificates,
   )
   @JoinColumn({ name: "application_id" })
-  application!: TrainerApplication;
+  application!: any;
 
   @Column({ type: "varchar", nullable: true })
   cert_name?: string;
@@ -60,7 +60,7 @@ export class TrainerApplicationCertificate {
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: "verified_by" })
-  verifier?: User;
+  verifier?: any;
 
   @Column({ type: "text", nullable: true })
   rejection_reason?: string;

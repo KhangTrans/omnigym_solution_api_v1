@@ -22,7 +22,7 @@ export class TrainerApplication {
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'user_id' })
-  user!: User;
+  user!: any;
 
   @Column({ type: 'text', nullable: true })
   bio?: string;

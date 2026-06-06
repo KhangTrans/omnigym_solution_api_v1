@@ -12,7 +12,7 @@ export class MembershipBranch {
 
   @ManyToOne(() => MembershipPackage, { eager: false })
   @JoinColumn({ name: 'membership_id' })
-  membership!: MembershipPackage;
+  membership!: any;
 
   @Column({ name: 'branch_id', type: 'int' })
   branch_id!: number;

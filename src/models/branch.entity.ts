@@ -1,17 +1,17 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { Partner } from './partner.entity.js';
+import { User } from './user.entity.js';
 
 @Entity('branches')
 export class Branch {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ name: 'partner_id', type: 'int' })
-  partner_id!: number;
+  @Column({ name: 'manager_id', type: 'int', nullable: true })
+  manager_id?: number;
 
-  @ManyToOne(() => Partner)
-  @JoinColumn({ name: 'partner_id' })
-  partner!: Partner;
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'manager_id' })
+  manager?: any;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   branch_name?: string;

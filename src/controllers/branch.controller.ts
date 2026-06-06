@@ -6,8 +6,8 @@ export const createBranch = async (req: Request, res: Response) => {
   try {
     const branchData: CreateBranchDto = req.body;
     
-    // Logic: If user is a Partner, they should only be able to add branch for their own partner_id
-    // For now, we take partner_id from body as requested.
+    // Logic: If user is a Branch Manager, they should only be able to add branch for their own manager_id
+    // For now, we take manager_id from body as requested.
     
     const result = await branchService.createBranch(branchData);
     res.status(201).json({
@@ -21,8 +21,8 @@ export const createBranch = async (req: Request, res: Response) => {
 
 export const getBranches = async (req: Request, res: Response) => {
   try {
-    const { partnerId } = req.query;
-    const result = await branchService.getAllBranches(partnerId ? Number(partnerId) : undefined);
+    const { managerId } = req.query;
+    const result = await branchService.getAllBranches(managerId ? Number(managerId) : undefined);
     res.json(result);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -46,6 +46,24 @@ export const updateBranch = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const branchData: Partial<CreateBranchDto> = req.body;
+    const user = req.session?.user;
+
+    if (!user) {
+      return res.status(401).json({ message: 'Bạn cần đăng nhập để thực hiện chức năng này.' });
+    }
+
+    // Lấy chi nhánh hiện tại để kiểm tra manager_id
+    const branch = await branchService.getBranchById(Number(id));
+
+    // Nếu là BranchManager, chỉ được sửa chi nhánh của chính mình quản lý
+    if (user.role === 'BranchManager' && branch.manager_id !== user.id) {
+      return res.status(403).json({ message: 'Bạn không có quyền chỉnh sửa chi nhánh này.' });
+    }
+
+    // Nếu không phải Admin hoặc BranchManager thì không có quyền
+    if (user.role !== 'Admin' && user.role !== 'BranchManager') {
+      return res.status(403).json({ message: 'Bạn không có quyền truy cập vào chức năng này.' });
+    }
 
     const result = await branchService.updateBranch(Number(id), branchData);
     res.json({

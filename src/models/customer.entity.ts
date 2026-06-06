@@ -11,7 +11,7 @@ export class Customer {
 
   @OneToOne(() => User, (user) => user.customer)
   @JoinColumn({ name: 'user_id' })
-  user!: User;
+  user!: any;
 
   @Column({ type: 'date', nullable: true })
   dob?: Date;

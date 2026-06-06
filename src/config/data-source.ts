@@ -4,7 +4,6 @@ import { User } from "../models/user.entity.js";
 import { Role } from "../models/role.entity.js";
 import { Customer } from "../models/customer.entity.js";
 import { FAQ } from "../models/faq.entity.js";
-import { Partner } from "../models/partner.entity.js";
 import { Trainer } from "../models/trainer.entity.js";
 import { Staff } from "../models/staff.entity.js";
 import { Branch } from "../models/branch.entity.js";
@@ -38,7 +37,6 @@ export const AppDataSource = new DataSource({
     User,
     Role,
     Customer,
-    Partner,
     Trainer,
     TrainerApplication,
     TrainerApplicationCertificate,

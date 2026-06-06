@@ -1,7 +1,6 @@
 import { AppDataSource } from "../config/data-source.js";
 import { User } from "../models/user.entity.js";
 import { Customer } from "../models/customer.entity.js";
-import { Partner } from "../models/partner.entity.js";
 import { TrainerApplication } from "../models/trainer-application.entity.js";
 import { ApplicationStatus } from "../models/trainer-status.enum.js";
 import { Staff } from "../models/staff.entity.js";
@@ -177,10 +176,6 @@ export const registerUser = async (userData: RegisterUserDto) => {
       const staffRepo = manager.getRepository(Staff);
       const staff = staffRepo.create({ user_id: savedUser.id });
       await staffRepo.save(staff);
-    } else if (savedUser.role_id === 4) {
-      const partnerRepo = manager.getRepository(Partner);
-      const partner = partnerRepo.create({ user_id: savedUser.id });
-      await partnerRepo.save(partner);
     } else if (savedUser.role_id === 5) {
       // Trainer application sẽ chỉ được tạo khi user bấm Save draft hoặc Submit.
     }

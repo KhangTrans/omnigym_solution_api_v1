@@ -15,9 +15,9 @@ async function testPostFeature() {
     const roles = await roleRepo.find();
     const adminRole = roles.find(r => r.role_name === 'Admin');
     const staffRole = roles.find(r => r.role_name === 'Staff');
-    const partnerRole = roles.find(r => r.role_name === 'Partner');
+    const branchManagerRole = roles.find(r => r.role_name === 'BranchManager');
 
-    if (!adminRole || !staffRole || !partnerRole) {
+    if (!adminRole || !staffRole || !branchManagerRole) {
       console.log('Roles not found. Please seed roles first.');
       return;
     }
@@ -47,7 +47,7 @@ async function testPostFeature() {
 
     const adminUser = await getOrCreateUser('admin_test@test.com', adminRole.id, 'Admin Test');
     const staffUser = await getOrCreateUser('staff_test@test.com', staffRole.id, 'Staff Test');
-    const partnerUser = await getOrCreateUser('partner_test@test.com', partnerRole.id, 'Partner Test');
+    const branchManagerUser = await getOrCreateUser('branch_manager_test@test.com', branchManagerRole.id, 'Branch Manager Test');
 
     console.log('Test Users ready');
 
@@ -59,17 +59,17 @@ async function testPostFeature() {
     }, 'Staff');
     console.log('Staff Post created. status:', staffPost.status);
 
-    // 4. Test Partner tạo bài (publish ngay)
-    console.log('\n--- Testing Partner Post ---');
-    const partnerPost = await createPost(partnerUser.id, {
-      title: 'Partner Post Title',
-      content: 'This post by partner should be published immediately'
-    }, 'Partner');
-    console.log('Partner Post created. status:', partnerPost.status);
+    // 4. Test BranchManager tạo bài
+    console.log('\n--- Testing BranchManager Post ---');
+    const partnerPost = await createPost(branchManagerUser.id, {
+      title: 'BranchManager Post Title',
+      content: 'This post by branch manager should be published'
+    }, 'BranchManager');
+    console.log('BranchManager Post created. status:', partnerPost.status);
 
     // 5. Kiểm tra getAllPosts cho User thường (không thấy bài Staff)
     console.log('\n--- Testing getAllPosts (Public) ---');
-    const publicPosts = await getAllPosts(false);
+    const { posts: publicPosts } = await getAllPosts(undefined);
     const hasStaffPost = publicPosts.some(p => p.id === staffPost.id);
     const hasPartnerPost = publicPosts.some(p => p.id === partnerPost.id);
     console.log('Public view - Has Staff Post:', hasStaffPost);
@@ -77,7 +77,7 @@ async function testPostFeature() {
 
     // 6. Kiểm tra getAllPosts cho Admin (thấy hết)
     console.log('\n--- Testing getAllPosts (Admin) ---');
-    const adminPosts = await getAllPosts(true);
+    const { posts: adminPosts } = await getAllPosts('Admin');
     const adminHasStaffPost = adminPosts.some(p => p.id === staffPost.id);
     console.log('Admin view - Has Staff Post:', adminHasStaffPost);
 

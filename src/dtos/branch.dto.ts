@@ -50,9 +50,9 @@ export class BranchFacilityDto {
 }
 
 export class CreateBranchDto {
-  @IsNotEmpty()
+  @IsOptional()
   @IsInt()
-  partner_id!: number;
+  manager_id?: number;
 
   @IsNotEmpty()
   @IsString()

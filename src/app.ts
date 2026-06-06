@@ -55,7 +55,7 @@ AppDataSource.initialize()
         { role_name: "Trainer", description: "Gym Trainer" },
         { role_name: "Customer", description: "Gym Member" },
         { role_name: "Staff", description: "Gym Staff" },
-        { role_name: "Partner", description: "Business Partner" },
+        { role_name: "BranchManager", description: "Gym Branch Manager" },
       ]);
       console.log("Default roles seeded.");
     }

@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, CreateDateColumn, ManyToOne } from 'typeorm';
 import { User } from './user.entity.js';
-import { Partner } from './partner.entity.js';
+import { Branch } from './branch.entity.js';
 
 @Entity('staffs')
 export class Staff {
@@ -12,14 +12,14 @@ export class Staff {
 
   @OneToOne(() => User, (user) => user.staff)
   @JoinColumn({ name: 'user_id' })
-  user!: User;
+  user!: any;
 
-  @Column({ name: 'partner_id', type: 'int', nullable: true })
-  partner_id?: number;
+  @Column({ name: 'branch_id', type: 'int', nullable: true })
+  branch_id?: number;
 
-  @ManyToOne(() => Partner)
-  @JoinColumn({ name: 'partner_id' })
-  partner?: Partner;
+  @ManyToOne(() => Branch)
+  @JoinColumn({ name: 'branch_id' })
+  branch?: Branch;
 
   @Column({ type: 'varchar', length: 100, nullable: true })
   department?: string;

@@ -10,7 +10,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 import { User } from "./user.entity.js";
-import { Partner } from "./partner.entity.js";
+import { Branch } from "./branch.entity.js";
 import { TrainerApplication } from "./trainer-application.entity.js";
 import { TrainerCertificate } from "./trainer-certificate.entity.js";
 
@@ -24,14 +24,14 @@ export class Trainer {
 
   @OneToOne(() => User, (user) => user.trainer)
   @JoinColumn({ name: "user_id" })
-  user!: User;
+  user!: any;
 
-  @Column({ name: "partner_id", type: "int", nullable: true })
-  partner_id?: number;
+  @Column({ name: "branch_id", type: "int", nullable: true })
+  branch_id?: number;
 
-  @ManyToOne(() => Partner, { nullable: true })
-  @JoinColumn({ name: "partner_id" })
-  partner?: Partner;
+  @ManyToOne(() => Branch, { nullable: true })
+  @JoinColumn({ name: "branch_id" })
+  branch?: Branch;
 
   @Column({ type: "text", nullable: true })
   bio?: string;
@@ -78,7 +78,7 @@ export class Trainer {
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: "approved_by" })
-  approver?: User;
+  approver?: any;
 
   @OneToMany(() => TrainerCertificate, (certificate) => certificate.trainer)
   certificates!: TrainerCertificate[];

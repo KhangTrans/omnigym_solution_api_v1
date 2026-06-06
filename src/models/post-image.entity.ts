@@ -11,7 +11,7 @@ export class PostImage {
 
   @ManyToOne(() => Post, (post) => post.images)
   @JoinColumn({ name: 'post_id' })
-  post!: Post;
+  post!: any;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   image_url?: string;

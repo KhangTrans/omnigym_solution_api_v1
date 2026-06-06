@@ -1,7 +1,6 @@
 import { AppDataSource } from '../config/data-source.js';
 import { User } from '../models/user.entity.js';
 import { Customer } from '../models/customer.entity.js';
-import { Partner } from '../models/partner.entity.js';
 import { Trainer } from '../models/trainer.entity.js';
 import { Staff } from '../models/staff.entity.js';
 import { UpdateProfileDto, CreateUserDto } from '../dtos/user.dto.js';
@@ -17,7 +16,7 @@ export const fetchUsers = async () => {
 
   const userRepository = AppDataSource.getRepository(User);
   const users = await userRepository.find({
-    relations: { role: true, customer: true, partner: true, trainer: true, staff: true }
+    relations: { role: true, customer: true, trainer: true, staff: true }
   });
   
   await setCache(cacheKey, users, 300); // Cache for 5 minutes
@@ -74,11 +73,10 @@ export const fetchUsersPaginated = async (params: UserListParams): Promise<UserL
   const queryBuilder = userRepository.createQueryBuilder('user')
     .leftJoinAndSelect('user.role', 'role')
     .leftJoinAndSelect('user.customer', 'customer')
-    .leftJoinAndSelect('user.partner', 'partner')
     .leftJoinAndSelect('user.trainer', 'trainer')
     .leftJoinAndSelect('user.staff', 'staff');
 
-  // Filter roles: Only show Customer, Trainer, Staff. Exclude Admin, Partner.
+  // Filter roles: Only show Customer, Trainer, Staff. Exclude Admin, BranchManager.
   if (params.role && ['Customer', 'Trainer', 'Staff'].includes(params.role)) {
     queryBuilder.andWhere('role.role_name = :role', { role: params.role });
   } else {
@@ -128,7 +126,12 @@ export const fetchUserProfile = async (userId: number) => {
   const userRepository = AppDataSource.getRepository(User);
   const user = await userRepository.findOne({
     where: { id: userId },
-    relations: { role: true, customer: true, partner: true, trainer: true, staff: true }
+    relations: { 
+      role: true, 
+      customer: true, 
+      trainer: { branch: true }, 
+      staff: { branch: true } 
+    }
   });
   
   if (!user) {
@@ -143,7 +146,12 @@ export const updateUserProfile = async (userId: number, updateData: UpdateProfil
   
   const user = await userRepository.findOne({ 
     where: { id: userId },
-    relations: { role: true, customer: true, partner: true, trainer: true, staff: true }
+    relations: { 
+      role: true, 
+      customer: true, 
+      trainer: { branch: true }, 
+      staff: { branch: true } 
+    }
   });
 
   if (!user) {
@@ -171,31 +179,23 @@ export const updateUserProfile = async (userId: number, updateData: UpdateProfil
       await customerRepo.save(customer);
       break;
 
-    case 'partner':
-      const partnerRepo = AppDataSource.getRepository(Partner);
-      let partner = user.partner || partnerRepo.create({ user_id: userId });
-      if (updateData.company_name) partner.company_name = updateData.company_name;
-      if (updateData.tax_code) partner.tax_code = updateData.tax_code;
-      if (updateData.business_license) partner.business_license = updateData.business_license;
-      if (updateData.description !== undefined) partner.description = updateData.description;
-      if (updateData.tag_line !== undefined) partner.tag_line = updateData.tag_line;
-      if (updateData.logo_url !== undefined) partner.logo_url = updateData.logo_url;
-      await partnerRepo.save(partner);
-      break;
-
     case 'trainer':
       const trainerRepo = AppDataSource.getRepository(Trainer);
-      let trainer = user.trainer || trainerRepo.create({ user_id: userId });
+      let trainer = user.trainer || trainerRepo.create();
+      trainer.user_id = userId;
       if (updateData.specialization) trainer.specialization = updateData.specialization;
       if (updateData.bio) trainer.bio = updateData.bio;
       if (updateData.experience_years) trainer.years_experience = Number(updateData.experience_years);
+      if (updateData.branch_id !== undefined) trainer.branch_id = updateData.branch_id ? Number(updateData.branch_id) : undefined;
       await trainerRepo.save(trainer);
       break;
 
     case 'staff':
       const staffRepo = AppDataSource.getRepository(Staff);
-      let staff = user.staff || staffRepo.create({ user_id: userId });
+      let staff = user.staff || staffRepo.create();
+      staff.user_id = userId;
       if (updateData.department) staff.department = updateData.department;
+      if (updateData.branch_id !== undefined) staff.branch_id = updateData.branch_id ? Number(updateData.branch_id) : undefined;
       await staffRepo.save(staff);
       break;
   }
@@ -205,7 +205,12 @@ export const updateUserProfile = async (userId: number, updateData: UpdateProfil
   // Re-fetch to get all relations and updated status
   const updatedUser = await userRepository.findOne({
     where: { id: userId },
-    relations: { role: true, customer: true, partner: true, trainer: true, staff: true }
+    relations: { 
+      role: true, 
+      customer: true, 
+      trainer: { branch: true }, 
+      staff: { branch: true } 
+    }
   });
   
   // Invalidate cache
@@ -218,7 +223,12 @@ export const updateUserStatus = async (userId: number, status: string) => {
   const userRepository = AppDataSource.getRepository(User);
   const user = await userRepository.findOne({
     where: { id: userId },
-    relations: { role: true, customer: true, partner: true, trainer: true, staff: true }
+    relations: { 
+      role: true, 
+      customer: true, 
+      trainer: { branch: true }, 
+      staff: { branch: true } 
+    }
   });
 
   if (!user) {

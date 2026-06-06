@@ -20,7 +20,7 @@ export const getAllPosts = async (userRole?: string, page: number = 1, limit: nu
   const postRepository = AppDataSource.getRepository(Post);
   
   const skip = (page - 1) * limit;
-  const isInternal = userRole === 'Admin' || userRole === 'Staff' || userRole === 'Partner';
+  const isInternal = userRole === 'Admin' || userRole === 'Staff' || userRole === 'BranchManager';
 
   const queryBuilder = postRepository.createQueryBuilder('post')
     .leftJoinAndSelect('post.user', 'user')
@@ -111,7 +111,7 @@ export const getPostById = async (id: number, userRole?: string) => {
     throw new Error('Không tìm thấy bài viết');
   }
 
-  const isInternal = userRole === 'Admin' || userRole === 'Staff' || userRole === 'Partner';
+  const isInternal = userRole === 'Admin' || userRole === 'Staff' || userRole === 'BranchManager';
 
   // Nếu không phải nội bộ và bài chưa publish thì không cho xem
   if (!isInternal && post.status !== PostStatus.Published) {

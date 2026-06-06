@@ -10,7 +10,7 @@ export const createBranch = async (data: CreateBranchDto) => {
     // 1. Create Branch
     const branchRepo = transactionalEntityManager.getRepository(Branch);
     const newBranch = branchRepo.create({
-      partner_id: data.partner_id,
+      manager_id: data.manager_id,
       branch_name: data.branch_name,
       address: data.address,
       hotline: data.hotline,
@@ -69,10 +69,10 @@ export const createBranch = async (data: CreateBranchDto) => {
   });
 };
 
-export const getAllBranches = async (partnerId?: number) => {
+export const getAllBranches = async (managerId?: number) => {
   const branchRepo = AppDataSource.getRepository(Branch);
   return await branchRepo.find({
-    where: partnerId ? { partner_id: partnerId } : {},
+    where: managerId ? { manager_id: managerId } : {},
     order: { id: 'DESC' }
   });
 };
@@ -135,6 +135,7 @@ export const updateBranch = async (branchId: number, data: Partial<CreateBranchD
     if (data.district) branch.district = data.district;
     if (data.opening_house) branch.opening_house = data.opening_house;
     if (data.image_url) branch.image_url = data.image_url;
+    if (data.manager_id !== undefined) branch.manager_id = data.manager_id;
 
     const updatedBranch = await transactionalEntityManager.save(branch);
 
