@@ -17,6 +17,7 @@ import { MembershipPackage } from "../models/membership-package.entity.js";
 import { MembershipBranch } from "../models/membership-branch.entity.js";
 import { Post } from "../models/post.entity.js";
 import { PostImage } from "../models/post-image.entity.js";
+import { PostView } from "../models/post-view.entity.js";
 import { CustomerSubscription } from "../models/customer-subscription.entity.js";
 import { Transaction } from "../models/transaction.entity.js";
 import { WorkShift } from "../models/work-shift.entity.js";
@@ -54,6 +55,7 @@ export const AppDataSource = new DataSource({
     MembershipBranch,
     Post,
     PostImage,
+    PostView,
     CustomerSubscription,
     Transaction,
     WorkShift,

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createPost, getAllPosts, approvePost, rejectPost, submitPostForApproval, getPostById, updatePost, deletePost } from '../controllers/post.controller.js';
+import { createPost, getAllPosts, approvePost, rejectPost, submitPostForApproval, getPostById, updatePost, deletePost, trackPostView } from '../controllers/post.controller.js';
 import { isAuthenticated, authorizeRole } from '../middlewares/auth.middleware.js';
 
 const router = Router();
@@ -7,6 +7,9 @@ const router = Router();
 // Mọi người có thể xem bài post đã duyệt, Admin/Staff/BranchManager có thể xem cả bài chưa duyệt
 router.get('/', getAllPosts);
 router.get('/:id', getPostById);
+
+// Track view — yêu cầu đăng nhập, không yêu cầu role cụ thể (service tự lọc)
+router.post('/:id/view', isAuthenticated, trackPostView);
 
 // Chỉ Staff, BranchManager, Admin mới có thể tạo bài viết
 router.post('/', isAuthenticated, authorizeRole(['Staff', 'BranchManager', 'Admin']), createPost);

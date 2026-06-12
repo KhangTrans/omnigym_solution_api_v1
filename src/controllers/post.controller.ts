@@ -2,6 +2,24 @@ import { Request, Response } from 'express';
 import * as postService from '../services/post.service.js';
 import { CreatePostDto } from '../dtos/post.dto.js';
 
+export const trackPostView = async (req: Request, res: Response) => {
+  try {
+    const postId = parseInt(req.params.id as string);
+    if (isNaN(postId)) {
+      return res.status(200).json({ success: true, skipped: true });
+    }
+
+    const user = req.user!;
+    const result = await postService.trackView(postId, user.id, user.role);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    // Silent fail — always return 200 so FE is never disrupted
+    console.error('[trackPostView] error:', error?.message);
+    return res.status(200).json({ success: false, error: 'internal' });
+  }
+};
+
+
 export const createPost = async (req: Request, res: Response) => {
   try {
     const user = req.user!;
@@ -24,8 +42,11 @@ export const getAllPosts = async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const search = req.query.search as string;
+    const category = req.query.category as string;
+    const sortBy = req.query.sortBy as string;
+    const status = req.query.status as string;
 
-    const result = await postService.getAllPosts(userRole, page, limit, search);
+    const result = await postService.getAllPosts(userRole, page, limit, search, category, sortBy, status);
     res.json(result);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
