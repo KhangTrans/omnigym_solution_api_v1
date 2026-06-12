@@ -4,10 +4,7 @@ import { CreatePostDto } from '../dtos/post.dto.js';
 
 export const createPost = async (req: Request, res: Response) => {
   try {
-    const user = req.session.user;
-    if (!user?.id || !user?.role) {
-      return res.status(401).json({ message: 'Unauthorized: No author session found' });
-    }
+    const user = req.user!;
 
     const postData: CreatePostDto = req.body;
     const post = await postService.createPost(user.id, postData, user.role);
@@ -23,7 +20,7 @@ export const createPost = async (req: Request, res: Response) => {
 
 export const getAllPosts = async (req: Request, res: Response) => {
   try {
-    const userRole = req.session.user?.role;
+    const userRole = req.user?.role;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const search = req.query.search as string;
@@ -58,9 +55,7 @@ export const rejectPost = async (req: Request, res: Response) => {
 export const submitPostForApproval = async (req: Request, res: Response) => {
   try {
     const postId = parseInt(req.params.id as string);
-    const user = req.session.user;
-
-    if (!user) return res.status(401).json({ message: 'Unauthorized' });
+    const user = req.user!;
 
     const post = await postService.submitPostForApproval(postId, user.id, user.role);
     res.json({ message: 'Post sent for approval successfully', post });
@@ -72,7 +67,7 @@ export const submitPostForApproval = async (req: Request, res: Response) => {
 export const getPostById = async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id as string);
-    const userRole = req.session.user?.role;
+    const userRole = req.user?.role;
     const post = await postService.getPostById(id, userRole);
     res.json(post);
   } catch (error: any) {
@@ -84,8 +79,7 @@ export const getPostById = async (req: Request, res: Response) => {
 export const updatePost = async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id as string);
-    const user = req.session.user;
-    if (!user) return res.status(401).json({ message: 'Unauthorized' });
+    const user = req.user!;
 
     const post = await postService.updatePost(id, user.id, user.role, req.body);
     res.json({ 
@@ -100,8 +94,7 @@ export const updatePost = async (req: Request, res: Response) => {
 export const deletePost = async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id as string);
-    const user = req.session.user;
-    if (!user) return res.status(401).json({ message: 'Unauthorized' });
+    const user = req.user!;
 
     await postService.deletePost(id, user.id, user.role);
     res.json({ message: 'Post deleted successfully' });

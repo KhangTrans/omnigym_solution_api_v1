@@ -12,7 +12,7 @@ const parsePublishedFilter = (value: unknown): boolean | undefined => {
 
 export const createFaqHandler = async (req: Request, res: Response) => {
   try {
-    const userId = req.session.user!.id;
+    const userId = req.user!.id;
 
     const { title, content, category, is_published }: CreateFaqDto = req.body;
 

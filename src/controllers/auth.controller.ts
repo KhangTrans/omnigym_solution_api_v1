@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import * as authService from '../services/auth.service.js';
-import { decryptRSA, getPublicKey } from '../utils/crypto.js';
+import { decryptRSA, getPublicKey, encryptTokenRSA } from '../utils/crypto.js';
 import { AppDataSource } from '../config/data-source.js';
 import { User } from '../models/user.entity.js';
 import { RequestOTPDto, CompleteRegistrationDto, LoginDto, GoogleLoginDto } from '../dtos/auth.dto.js';
@@ -64,9 +64,9 @@ export const login = async (req: Request, res: Response) => {
     }
     
     const user = await authService.loginUser(identifier, decryptedPassword);
-
-    // Save to session
-    req.session.user = {
+ 
+    // Build user payload
+    const userPayload = {
       id: user.id,
       email: user.email,
       phone_number: user.phone_number,
@@ -74,8 +74,11 @@ export const login = async (req: Request, res: Response) => {
       avatar_url: user.avatar_url,
       role: user.role.role_name
     };
-
-    res.json({ message: 'Login successful', user: req.session.user });
+ 
+    // Encrypt user info into RSA token
+    const token = encryptTokenRSA(userPayload);
+ 
+    res.json({ message: 'Login successful', token, user: userPayload });
   } catch (error: any) {
     res.status(401).json({ message: error.message });
   }
@@ -86,9 +89,9 @@ export const googleLogin = async (req: Request, res: Response) => {
     const { idToken }: GoogleLoginDto = req.body;
     const googlePayload = await authService.verifyGoogleToken(idToken);
     const user = await authService.loginWithGoogle(googlePayload);
-
-    // Save to session
-    req.session.user = {
+ 
+    // Build user payload
+    const userPayload = {
       id: user.id,
       email: user.email,
       phone_number: user.phone_number,
@@ -96,21 +99,19 @@ export const googleLogin = async (req: Request, res: Response) => {
       avatar_url: user.avatar_url,
       role: user.role.role_name
     };
-
-    res.json({ message: 'Google login successful', user: req.session.user });
+ 
+    // Encrypt user info into RSA token
+    const token = encryptTokenRSA(userPayload);
+ 
+    res.json({ message: 'Google login successful', token, user: userPayload });
   } catch (error: any) {
     res.status(401).json({ message: error.message });
   }
 };
 
 export const logout = (req: Request, res: Response) => {
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).json({ message: 'Could not log out' });
-    }
-    res.clearCookie('connect.sid');
-    res.json({ message: 'Logout successful' });
-  });
+  // Vì là stateless token, client chỉ cần tự xóa token ở phía client.
+  res.json({ message: 'Logout successful' });
 };
 
 export const fetchPublicKey = (req: Request, res: Response) => {
@@ -119,11 +120,8 @@ export const fetchPublicKey = (req: Request, res: Response) => {
 
 export const getProfile = async (req: Request, res: Response) => {
   try {
-    const userId = req.session.user?.id;
-    if (!userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-
+    const userId = req.user!.id;
+ 
     const userRepository = AppDataSource.getRepository(User);
     const user = await userRepository.findOne({
       where: { id: userId },
@@ -183,11 +181,7 @@ export const resetPassword = async (req: Request, res: Response) => {
 export const changePassword = async (req: Request, res: Response) => {
   try {
     const { oldPassword, newPassword } = req.body;
-    const userId = req.session.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
+    const userId = req.user!.id;
 
     // Decrypt passwords sent using RSA
     let decryptedOldPassword = oldPassword;

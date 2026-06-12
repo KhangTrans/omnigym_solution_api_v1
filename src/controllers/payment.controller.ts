@@ -82,10 +82,7 @@ const activateSubscriptionAndSendEmail = async (
 
 export const createMembershipPayment = async (req: Request, res: Response) => {
   try {
-    const userId = req.session?.user?.id;
-    if (!userId) {
-      return res.status(401).json({ message: 'Bạn cần đăng nhập để thực hiện giao dịch này.' });
-    }
+    const userId = req.user!.id;
 
     const { packageId } = req.body;
     if (!packageId) {

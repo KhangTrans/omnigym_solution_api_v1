@@ -52,11 +52,7 @@ export const createTrainerApplicationHandler = async (
   res: Response,
 ) => {
   try {
-    const userId = req.session.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({ message: "Bạn cần đăng nhập." });
-    }
+    const userId = req.user!.id;
 
     const validationError = validateCreateTrainerApplicationBody(req.body);
 
@@ -118,11 +114,7 @@ export const getMyTrainerApplicationHandler = async (
   res: Response,
 ) => {
   try {
-    const userId = req.session.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({ message: "Bạn cần đăng nhập." });
-    }
+    const userId = req.user!.id;
 
     const application = await getMyTrainerApplication(userId);
 
@@ -140,14 +132,10 @@ export const approveTrainerApplicationHandler = async (
 ) => {
   try {
     const id = Number(req.params.id);
-    const adminId = req.session.user?.id;
+    const adminId = req.user!.id;
 
     if (!id) {
       return res.status(400).json({ message: "Application id không hợp lệ." });
-    }
-
-    if (!adminId) {
-      return res.status(401).json({ message: "Bạn cần đăng nhập." });
     }
 
     const result = await approveTrainerApplication(id, adminId);
@@ -167,15 +155,11 @@ export const rejectTrainerApplicationHandler = async (
 ) => {
   try {
     const id = Number(req.params.id);
-    const adminId = req.session.user?.id;
+    const adminId = req.user!.id;
     const { rejection_reason } = req.body;
 
     if (!id) {
       return res.status(400).json({ message: "Application id không hợp lệ." });
-    }
-
-    if (!adminId) {
-      return res.status(401).json({ message: "Bạn cần đăng nhập." });
     }
 
     if (!rejection_reason) {
@@ -202,11 +186,7 @@ export const saveTrainerApplicationDraftHandler = async (
   res: Response,
 ) => {
   try {
-    const userId = req.session.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({ message: "Bạn cần đăng nhập." });
-    }
+    const userId = req.user!.id;
 
     const application = await saveTrainerApplicationDraft(userId, req.body);
 

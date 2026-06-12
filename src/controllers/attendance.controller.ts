@@ -27,7 +27,7 @@ const getClientIp = (req: Request): string => {
 
 export const checkInHandler = async (req: Request, res: Response) => {
   try {
-    const userId = req.session.user!.id;
+    const userId = req.user!.id;
     const { shift_id, check_in_code, dynamic_qr_token }: CheckInDto = req.body;
 
     if (!shift_id) {
@@ -55,7 +55,7 @@ export const checkInHandler = async (req: Request, res: Response) => {
 
 export const checkInFaceHandler = async (req: Request, res: Response) => {
   try {
-    const userId = req.session.user!.id;
+    const userId = req.user!.id;
     const { shift_id, face_vector, image_base64, check_in_code, dynamic_qr_token }: CheckInFaceDto = req.body;
 
     if (!shift_id) {
@@ -117,7 +117,7 @@ export const getBranchQrTokenHandler = async (req: Request, res: Response) => {
 
 export const checkOutHandler = async (req: Request, res: Response) => {
   try {
-    const userId = req.session.user!.id;
+    const userId = req.user!.id;
     const { shift_id }: CheckOutDto = req.body;
 
     const attendance = await checkOut(userId, shift_id);
@@ -132,7 +132,7 @@ export const checkOutHandler = async (req: Request, res: Response) => {
 
 export const getMyAttendanceLogsHandler = async (req: Request, res: Response) => {
   try {
-    const userId = req.session.user!.id;
+    const userId = req.user!.id;
     const logs = await fetchMyAttendanceLogs(userId);
     res.json(logs);
   } catch (error: any) {

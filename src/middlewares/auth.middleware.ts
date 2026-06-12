@@ -4,7 +4,7 @@ import { Request, Response, NextFunction } from 'express';
  * Middleware để kiểm tra xem người dùng đã đăng nhập (có session) chưa.
  */
 export const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
-  if (req.session && req.session.user) {
+  if (req.user) {
     return next();
   }
   
@@ -20,7 +20,7 @@ export const isAuthenticated = (req: Request, res: Response, next: NextFunction)
  */
 export const authorizeRole = (allowedRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    const userRole = req.session?.user?.role;
+    const userRole = req.user?.role;
 
     if (!userRole || !allowedRoles.includes(userRole)) {
       return res.status(403).json({ 
