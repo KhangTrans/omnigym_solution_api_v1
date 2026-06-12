@@ -1,14 +1,16 @@
 import { AppDataSource } from '../config/data-source.js';
 import { Post } from '../models/post.entity.js';
+import { PostView } from '../models/post-view.entity.js';
 import { CreatePostDto } from '../dtos/post.dto.js';
 import { PostStatus } from '../models/post-status.enum.js';
 
-export const createPost = async (authorId: number, postData: CreatePostDto, role: string) => {
+export const createPost = async (authorId: number, postData: CreatePostDto & { category?: string }, role: string) => {
   const postRepository = AppDataSource.getRepository(Post);
 
   const newPost = postRepository.create({
     content: postData.content,
     title: postData.title,
+    category: postData.category || 'General',
     user_id: authorId,
     status: PostStatus.Draft,
   });
@@ -16,7 +18,15 @@ export const createPost = async (authorId: number, postData: CreatePostDto, role
   return await postRepository.save(newPost);
 };
 
-export const getAllPosts = async (userRole?: string, page: number = 1, limit: number = 10, search?: string) => {
+export const getAllPosts = async (
+  userRole?: string,
+  page: number = 1,
+  limit: number = 10,
+  search?: string,
+  category?: string,
+  sortBy?: string,
+  status?: string
+) => {
   const postRepository = AppDataSource.getRepository(Post);
   
   const skip = (page - 1) * limit;
@@ -26,30 +36,58 @@ export const getAllPosts = async (userRole?: string, page: number = 1, limit: nu
     .leftJoinAndSelect('post.user', 'user')
     .leftJoinAndSelect('user.role', 'role')
     .leftJoinAndSelect('post.images', 'images')
-    .orderBy('post.created_at', 'DESC')
     .skip(skip)
     .take(limit);
 
-  // Nếu không phải Admin/Staff/Partner thì chỉ lấy những bài đã publish
-  if (!isInternal) {
-    queryBuilder.andWhere('post.status = :status', { status: PostStatus.Published });
+  // Apply order/sorting
+  if (sortBy === 'oldest') {
+    queryBuilder.orderBy('post.created_at', 'ASC');
+  } else if (sortBy === 'popular') {
+    queryBuilder
+      .orderBy('post.view_count', 'DESC')
+      .addOrderBy('post.created_at', 'DESC');
+  } else {
+    queryBuilder.orderBy('post.created_at', 'DESC');
   }
 
-  // Tìm kiếm theo tiêu đề hoặc nội dung nếu có
+  // Nếu không phải Admin/Staff/BranchManager thì chỉ lấy những bài đã publish
+  if (!isInternal) {
+    queryBuilder.andWhere('post.status = :status', { status: PostStatus.Published });
+  } else if (status) {
+    const upperStatus = status.toUpperCase();
+    if (Object.values(PostStatus).includes(upperStatus as PostStatus)) {
+      queryBuilder.andWhere('post.status = :status', { status: upperStatus });
+    }
+  }
+
+  // Lọc theo category
+  if (category && category.trim() !== '' && category.toLowerCase() !== 'all') {
+    queryBuilder.andWhere('post.category ILIKE :category', { category: category.trim() });
+  }
+
+  // Tìm kiếm theo tiêu đề hoặc nội dung nếu có (loại bỏ các thẻ HTML để tránh tìm khớp các thuộc tính hoặc URL ảnh)
   if (search) {
-    queryBuilder.andWhere('(post.title ILIKE :search OR post.content ILIKE :search)', { search: `%${search}%` });
+    queryBuilder.andWhere(
+      "(post.title ILIKE :search OR regexp_replace(coalesce(post.content, ''), '<[^>]*>', ' ', 'g') ILIKE :search)",
+      { search: `%${search}%` }
+    );
   }
 
   const [posts, total] = await queryBuilder.getManyAndCount();
 
+  const responseMeta = {
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit)
+  };
+
   return {
     posts,
-    meta: {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit)
-    }
+    meta: responseMeta,
+    // Add compatibility properties for guest view
+    data: posts,
+    pagination: responseMeta
   };
 };
 
@@ -121,7 +159,7 @@ export const getPostById = async (id: number, userRole?: string) => {
   return post;
 };
 
-export const updatePost = async (id: number, userId: number, role: string, updateData: Partial<CreatePostDto>) => {
+export const updatePost = async (id: number, userId: number, role: string, updateData: Partial<CreatePostDto> & { category?: string; status?: PostStatus }) => {
   const postRepository = AppDataSource.getRepository(Post);
   const post = await postRepository.findOne({ where: { id } });
 
@@ -139,7 +177,23 @@ export const updatePost = async (id: number, userId: number, role: string, updat
     post.status = PostStatus.Draft;
   }
 
-  Object.assign(post, updateData);
+  // Chỉ cập nhật các field nội dung được phép.
+  if (typeof updateData.title === 'string') {
+    post.title = updateData.title;
+  }
+
+  if (typeof updateData.content === 'string') {
+    post.content = updateData.content;
+  }
+
+  if (typeof updateData.category === 'string') {
+    post.category = updateData.category;
+  }
+
+  if (role === 'Admin' && updateData.status && Object.values(PostStatus).includes(updateData.status)) {
+    post.status = updateData.status;
+  }
+
   return await postRepository.save(post);
 };
 
@@ -157,4 +211,63 @@ export const deletePost = async (id: number, userId: number, role: string) => {
   }
 
   return await postRepository.remove(post);
+};
+
+/**
+ * Track a view for a post by a user.
+ * Rules:
+ *  - Only roles 'Customer' and 'Trainer' count as views
+ *  - Each (user_id, post_id) pair can only count once per calendar day
+ *  - Always returns 200 — never throws a user-visible error
+ */
+export const trackView = async (postId: number, userId: number, userRole: string) => {
+  // Only count views for Customer and Trainer roles
+  const countableRoles = ['Customer', 'Trainer'];
+  if (!countableRoles.includes(userRole)) {
+    return { success: true, alreadyViewed: false, skipped: true };
+  }
+
+  const postViewRepository = AppDataSource.getRepository(PostView);
+  const postRepository = AppDataSource.getRepository(Post);
+
+  // Today's date as YYYY-MM-DD string (UTC-safe via toISOString)
+  const todayDate = new Date().toISOString().slice(0, 10);
+
+  // Check if already viewed today
+  const existing = await postViewRepository.findOne({
+    where: { post_id: postId, user_id: userId, viewed_date: todayDate },
+  });
+
+  if (existing) {
+    const post = await postRepository.findOne({ where: { id: postId } });
+    return { success: true, alreadyViewed: true, viewCount: post?.view_count ?? 0 };
+  }
+
+  // Insert view record (unique constraint guards against race conditions)
+  try {
+    const viewRecord = postViewRepository.create({
+      post_id: postId,
+      user_id: userId,
+      viewed_date: todayDate,
+    });
+    await postViewRepository.save(viewRecord);
+
+    // Atomically increment view_count
+    await postRepository
+      .createQueryBuilder()
+      .update(Post)
+      .set({ view_count: () => 'view_count + 1' })
+      .where('id = :id', { id: postId })
+      .execute();
+
+    const updatedPost = await postRepository.findOne({ where: { id: postId } });
+    return { success: true, alreadyViewed: false, viewCount: updatedPost?.view_count ?? 0 };
+  } catch (err: any) {
+    // Unique constraint violation (race condition) — treat as already viewed
+    if (err?.code === '23505') {
+      const post = await postRepository.findOne({ where: { id: postId } });
+      return { success: true, alreadyViewed: true, viewCount: post?.view_count ?? 0 };
+    }
+    throw err;
+  }
 };

@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 import { User } from './user.entity.js';
 import { PostImage } from './post-image.entity.js';
 import { PostStatus } from './post-status.enum.js';
+import { PostView } from './post-view.entity.js';
 
 @Entity('post')
 export class Post {
@@ -29,6 +30,12 @@ export class Post {
   })
   status!: PostStatus;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  category?: string;
+
+  @Column({ type: 'int', default: 0, name: 'view_count' })
+  view_count!: number;
+
   @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   created_at!: Date;
 
@@ -37,4 +44,7 @@ export class Post {
 
   @OneToMany(() => PostImage, (image) => image.post)
   images!: PostImage[];
+
+  @OneToMany(() => PostView, (view) => view.post)
+  views!: PostView[];
 }
