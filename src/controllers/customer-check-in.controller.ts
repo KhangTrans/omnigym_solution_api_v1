@@ -9,7 +9,7 @@ import { CustomerCheckInDto, GetCustomerCheckInQueryDto } from '../dtos/customer
 
 export const customerCheckInHandler = async (req: Request, res: Response) => {
   try {
-    const userId = req.session.user!.id;
+    const userId = req.user!.id;
     const { branch_id, dynamic_qr_token }: CustomerCheckInDto = req.body;
 
     if (!branch_id) {
@@ -28,7 +28,7 @@ export const customerCheckInHandler = async (req: Request, res: Response) => {
 
 export const getMyCheckInLogsHandler = async (req: Request, res: Response) => {
   try {
-    const userId = req.session.user!.id;
+    const userId = req.user!.id;
     const logs = await fetchMyCheckInLogs(userId);
     res.json(logs);
   } catch (error: any) {
@@ -71,7 +71,7 @@ export const getCustomerCheckInLogsForBranchHandler = async (req: Request, res: 
       query.date = String(req.query.date);
     }
 
-    const currentUser = req.session.user!;
+    const currentUser = req.user!;
     const logs = await fetchCustomerCheckInLogsForBranch(query, currentUser);
     res.json(logs);
   } catch (error: any) {

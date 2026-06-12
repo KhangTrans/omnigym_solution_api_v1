@@ -21,7 +21,7 @@ router.post('/login', login);
 router.get('/public-key', fetchPublicKey);
 router.post('/google-login', googleLogin);
 router.post('/logout', logout);
-router.get('/me', getProfile);
+router.get('/me', isAuthenticated, getProfile);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
 router.post('/change-password', isAuthenticated, changePassword);

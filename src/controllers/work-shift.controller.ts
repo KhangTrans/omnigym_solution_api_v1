@@ -36,7 +36,7 @@ export const createShiftHandler = async (req: Request, res: Response) => {
 
 export const getShiftsHandler = async (req: Request, res: Response) => {
   try {
-    const user = req.session.user!;
+    const user = req.user!;
     const query: GetWorkShiftsQueryDto = {};
 
     if (user.role === 'Staff' || user.role === 'Trainer') {
@@ -75,7 +75,7 @@ export const getShiftByIdHandler = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Không tìm thấy ca làm việc.' });
     }
 
-    const user = req.session.user!;
+    const user = req.user!;
     // Phân quyền: Staff/Trainer chỉ xem được ca của bản thân
     if ((user.role === 'Staff' || user.role === 'Trainer') && shift.user_id !== user.id) {
       return res.status(403).json({ message: 'Bạn không có quyền xem thông tin ca làm việc này.' });

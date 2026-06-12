@@ -1,7 +1,8 @@
 import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import session from 'express-session';
+import { decryptTokenRSA } from './utils/crypto.js';
+
 import userRoutes from './routes/user.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import faqRoutes from './routes/faq.routes.js';
@@ -30,19 +31,21 @@ app.use(
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
-// Session Configuration
-app.use(
-  session({
-    secret: process.env.AES_SECRET || "omnigym_session_secret",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === "production",
-      httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
-    },
-  }),
-);
+// Global middleware to parse RSA Token and attach user to Request
+app.use((req: Request, res: Response, next: any) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const decryptedUser = decryptTokenRSA(token);
+      req.user = decryptedUser;
+    } catch (error: any) {
+      console.warn('Global token parse failed:', error.message);
+    }
+  }
+  next();
+});
+
 
 // Initialize Database
 AppDataSource.initialize()

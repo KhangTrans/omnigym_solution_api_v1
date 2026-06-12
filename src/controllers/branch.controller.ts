@@ -65,7 +65,7 @@ export const updateBranch = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const branchData: Partial<CreateBranchDto> = req.body;
-    const user = req.session?.user;
+    const user = req.user;
 
     // Lấy chi nhánh hiện tại để kiểm tra manager_id
     const branch = await branchService.getBranchById(Number(id));

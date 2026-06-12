@@ -21,10 +21,7 @@ export const getUsers = async (req: Request, res: Response) => {
 
 export const getProfile = async (req: Request, res: Response) => {
   try {
-    const userId = req.session.user?.id;
-    if (!userId) {
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
+    const userId = req.user!.id;
     const user = await fetchUserProfile(userId);
     res.json(user);
   } catch (error: any) {
@@ -34,10 +31,7 @@ export const getProfile = async (req: Request, res: Response) => {
 
 export const updateProfile = async (req: Request, res: Response) => {
   try {
-    const userId = req.session.user?.id;
-    if (!userId) {
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
+    const userId = req.user!.id;
 
     const updateData: UpdateProfileDto = req.body;
 
@@ -49,12 +43,7 @@ export const updateProfile = async (req: Request, res: Response) => {
 
     const updatedUser = await updateUserProfile(userId, updateData);
 
-    // Sync session data with updated user info
-    // if (req.session.user) {
-    //   req.session.user.full_name = updatedUser.full_name;
-    //   req.session.user.avatar_url = updatedUser.avatar_url;
-    //   req.session.user.phone_number = updatedUser.phone_number;
-    // }
+
 
     res.json({ message: 'Profile updated successfully', user: updatedUser });
   } catch (error: any) {
@@ -98,10 +87,7 @@ export const updateUserStatusHandler = async (req: Request, res: Response) => {
 
 export const registerFaceEmbedding = async (req: Request, res: Response) => {
   try {
-    const userId = req.session.user?.id;
-    if (!userId) {
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
+    const userId = req.user!.id;
 
     const { face_vector, image_base64 }: RegisterFaceEmbeddingDto = req.body;
     
