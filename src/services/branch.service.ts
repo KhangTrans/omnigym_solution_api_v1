@@ -262,11 +262,40 @@ export const slugify = (text: string): string => {
     .replace(/\-\-+/g, '-'); // Replace multiple - with single -
 };
 
+export type BranchTrainerSortBy =
+  | 'rating_desc'
+  | 'price_asc'
+  | 'price_desc'
+  | 'newest';
+
+export interface BranchTrainerQuery {
+  trainerPage?: number;
+  trainerLimit?: number;
+  trainerSearch?: string;
+  trainerSpecialization?: string;
+  trainerSortBy?: BranchTrainerSortBy;
+}
+
+const VALID_BRANCH_TRAINER_SORTS: BranchTrainerSortBy[] = [
+  'rating_desc',
+  'price_asc',
+  'price_desc',
+  'newest',
+];
+
+const normalizeBranchTrainerSort = (
+  raw?: string
+): BranchTrainerSortBy => {
+  if (raw && (VALID_BRANCH_TRAINER_SORTS as string[]).includes(raw)) {
+    return raw as BranchTrainerSortBy;
+  }
+  return 'rating_desc';
+};
+
 export const getBranchByIdOrSlug = async (
   branchId?: number,
   slug?: string,
-  trainerPage: number = 1,
-  trainerLimit: number = 5
+  trainerQuery: BranchTrainerQuery = {}
 ) => {
   const branchRepo = AppDataSource.getRepository(Branch);
   let branch;
@@ -304,25 +333,92 @@ export const getBranchByIdOrSlug = async (
     })
   );
 
-  // Lấy danh sách trainer kèm phân trang
-  const trainerRepo = AppDataSource.getRepository(Trainer);
-  const skip = (trainerPage - 1) * trainerLimit;
+  // ─── Trainer list (filter / sort / search / pagination, scoped to this branch) ───
+  const trainerPage =
+    trainerQuery.trainerPage && trainerQuery.trainerPage > 0
+      ? trainerQuery.trainerPage
+      : 1;
+  const trainerLimit =
+    trainerQuery.trainerLimit && trainerQuery.trainerLimit > 0
+      ? Math.min(50, trainerQuery.trainerLimit)
+      : 5;
+  const trainerSkip = (trainerPage - 1) * trainerLimit;
+  const sortBy = normalizeBranchTrainerSort(trainerQuery.trainerSortBy);
 
-  const [trainers, trainerCount] = await trainerRepo.findAndCount({
-    where: { branch_id: branch.id, is_active: true },
-    relations: { user: true },
-    skip,
-    take: trainerLimit,
-    order: { id: 'DESC' }
-  });
+  const trainerRepo = AppDataSource.getRepository(Trainer);
+  const trainerQb = trainerRepo
+    .createQueryBuilder('trainer')
+    .leftJoinAndSelect('trainer.user', 'user')
+    .where('trainer.branch_id = :branchId', { branchId: branch.id })
+    .andWhere('trainer.is_active = :isActive', { isActive: true });
+
+  if (trainerQuery.trainerSearch && trainerQuery.trainerSearch.trim() !== '') {
+    const search = `%${trainerQuery.trainerSearch.trim().toLowerCase()}%`;
+    trainerQb.andWhere(
+      '(LOWER(user.full_name) LIKE :search OR LOWER(trainer.specialization) LIKE :search)',
+      { search }
+    );
+  }
+
+  if (
+    trainerQuery.trainerSpecialization &&
+    trainerQuery.trainerSpecialization.trim() !== ''
+  ) {
+    trainerQb.andWhere(
+      'LOWER(trainer.specialization) = LOWER(:specialization)',
+      { specialization: trainerQuery.trainerSpecialization.trim() }
+    );
+  }
+
+  switch (sortBy) {
+    case 'price_asc':
+      trainerQb
+        .orderBy('trainer.hourly_rate', 'ASC', 'NULLS LAST')
+        .addOrderBy('trainer.id', 'DESC');
+      break;
+    case 'price_desc':
+      trainerQb
+        .orderBy('trainer.hourly_rate', 'DESC', 'NULLS LAST')
+        .addOrderBy('trainer.id', 'DESC');
+      break;
+    case 'newest':
+      trainerQb.orderBy('trainer.id', 'DESC');
+      break;
+    case 'rating_desc':
+    default:
+      trainerQb
+        .orderBy('trainer.rating', 'DESC')
+        .addOrderBy('trainer.review_count', 'DESC')
+        .addOrderBy('trainer.id', 'DESC');
+      break;
+  }
+
+  trainerQb.skip(trainerSkip).take(trainerLimit);
+
+  const [trainers, trainerCount] = await trainerQb.getManyAndCount();
 
   // Loại bỏ password của user trước khi trả về
-  const cleanedTrainers = trainers.map(t => {
+  const cleanedTrainers = trainers.map((t) => {
     if (t.user) {
       delete t.user.password;
     }
     return t;
   });
+
+  // Danh sách specialization khả dụng tại chi nhánh này (cho FE đổ dropdown filter)
+  const specRows = await trainerRepo
+    .createQueryBuilder('trainer')
+    .select('DISTINCT trainer.specialization', 'specialization')
+    .where('trainer.branch_id = :branchId', { branchId: branch.id })
+    .andWhere('trainer.is_active = :isActive', { isActive: true })
+    .andWhere('trainer.specialization IS NOT NULL')
+    .andWhere("trainer.specialization <> ''")
+    .orderBy('specialization', 'ASC')
+    .getRawMany<{ specialization: string }>();
+
+  const trainerSpecializations = specRows
+    .map((r) => r.specialization)
+    .filter((s): s is string => Boolean(s));
 
   return {
     ...branch,
@@ -333,7 +429,8 @@ export const getBranchByIdOrSlug = async (
       total: trainerCount,
       page: trainerPage,
       limit: trainerLimit,
-      totalPages: Math.ceil(trainerCount / trainerLimit)
-    }
+      totalPages: Math.max(1, Math.ceil(trainerCount / trainerLimit)),
+    },
+    trainerSpecializations,
   };
 };

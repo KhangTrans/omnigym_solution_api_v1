@@ -40,16 +40,48 @@ export const getBranches = async (req: Request, res: Response) => {
 export const getBranchDetail = async (req: Request, res: Response) => {
   try {
     const { id } = req.params; // Can be an ID or a slug
-    const { trainerPage, trainerLimit } = req.query;
+    const {
+      trainerPage,
+      trainerLimit,
+      trainerSearch,
+      trainerSpecialization,
+      trainerSortBy,
+    } = req.query;
 
     const tPage = trainerPage ? Number(trainerPage) : 1;
     const tLimit = trainerLimit ? Number(trainerLimit) : 5;
 
+    const trainerQuery: branchService.BranchTrainerQuery = {
+      trainerPage: Number.isFinite(tPage) && tPage > 0 ? tPage : 1,
+      trainerLimit: Number.isFinite(tLimit) && tLimit > 0 ? tLimit : 5,
+      trainerSearch:
+        typeof trainerSearch === 'string' && trainerSearch.trim() !== ''
+          ? trainerSearch.trim()
+          : undefined,
+      trainerSpecialization:
+        typeof trainerSpecialization === 'string' &&
+        trainerSpecialization.trim() !== ''
+          ? trainerSpecialization.trim()
+          : undefined,
+      trainerSortBy:
+        typeof trainerSortBy === 'string'
+          ? (trainerSortBy as branchService.BranchTrainerSortBy)
+          : undefined,
+    };
+
     let result;
     if (/^\d+$/.test(id as string)) {
-      result = await branchService.getBranchByIdOrSlug(Number(id), undefined, tPage, tLimit);
+      result = await branchService.getBranchByIdOrSlug(
+        Number(id),
+        undefined,
+        trainerQuery
+      );
     } else {
-      result = await branchService.getBranchByIdOrSlug(undefined, id as string, tPage, tLimit);
+      result = await branchService.getBranchByIdOrSlug(
+        undefined,
+        id as string,
+        trainerQuery
+      );
     }
 
     res.json({

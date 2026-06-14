@@ -18,6 +18,7 @@ import workShiftRoutes from './routes/work-shift.routes.js';
 import attendanceRoutes from './routes/attendance.routes.js';
 import customerCheckInRoutes from './routes/customer-check-in.routes.js';
 import staffRoutes from './routes/staff.routes.js';
+import trainerRoutes from './routes/trainer.routes.js';
 
 dotenv.config();
 
@@ -86,6 +87,7 @@ app.use('/api/work-shifts', workShiftRoutes);
 app.use('/api/attendances', attendanceRoutes);
 app.use('/api/customer-check-ins', customerCheckInRoutes);
 app.use('/api/staffs', staffRoutes);
+app.use('/api/trainers', trainerRoutes);
 
 
 // Basic Route
