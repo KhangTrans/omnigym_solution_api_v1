@@ -1,8 +1,106 @@
 import { AppDataSource } from "../config/data-source.js";
 import { Trainer } from "../models/trainer.entity.js";
+import { Branch } from "../models/branch.entity.js";
+import { Staff } from "../models/staff.entity.js";
+import { User } from "../models/user.entity.js";
 import { TrainerCertificate } from "../models/trainer-certificate.entity.js";
 import { TrainerPackage } from "../models/trainer-package.entity.js";
 import { CertificateStatus } from "../models/trainer-status.enum.js";
+
+export const getApprovedTrainers = async (currentUser: any) => {
+  const trainerRepo = AppDataSource.getRepository(Trainer);
+  const role = String(currentUser.role).toLowerCase();
+
+  const qb = trainerRepo.createQueryBuilder("trainer")
+    .leftJoinAndSelect("trainer.user", "user")
+    .leftJoinAndSelect("trainer.branch", "branch")
+    .where("trainer.is_active = :isActive", { isActive: true });
+
+  if (role === "admin") {
+    // Admin sees all active trainers
+  } else if (role === "branchmanager") {
+    const branchRepository = AppDataSource.getRepository(Branch);
+    const managedBranches = await branchRepository.find({
+      where: { manager_id: currentUser.id }
+    });
+    const managedBranchIds = managedBranches.map(b => b.id);
+
+    if (managedBranchIds.length === 0) {
+      return [];
+    }
+
+    qb.andWhere("trainer.branch_id IN (:...branchIds)", { branchIds: managedBranchIds });
+  } else if (role === "staff") {
+    const staffRepository = AppDataSource.getRepository(Staff);
+    const staff = await staffRepository.findOne({
+      where: { user_id: currentUser.id }
+    });
+
+    if (!staff || !staff.branch_id) {
+      throw new Error("Tài khoản nhân viên chưa được gán chi nhánh.");
+    }
+
+    qb.andWhere("trainer.branch_id = :branchId", { branchId: staff.branch_id });
+  } else {
+    throw new Error("Bạn không có quyền truy cập chức năng này.");
+  }
+
+  const trainers = await qb.getMany();
+
+  return trainers.map(t => {
+    if (t.user) {
+      delete t.user.password;
+    }
+    return t;
+  });
+};
+
+export const updateTrainerStatus = async (
+  trainerId: number,
+  status: string,
+  currentUser: any,
+) => {
+  const role = String(currentUser.role).toLowerCase();
+  const trainerRepo = AppDataSource.getRepository(Trainer);
+  const userRepo = AppDataSource.getRepository(User);
+  const branchRepo = AppDataSource.getRepository(Branch);
+
+  const trainer = await trainerRepo.findOne({
+    where: { id: trainerId },
+    relations: { user: true, branch: true },
+  });
+
+  if (!trainer) {
+    throw new Error("Không tìm thấy huấn luyện viên.");
+  }
+
+  if (!trainer.user) {
+    throw new Error("Huấn luyện viên chưa có tài khoản người dùng.");
+  }
+
+  if (role === "branchmanager") {
+    const managedBranches = await branchRepo.find({
+      where: { manager_id: currentUser.id },
+    });
+    const managedBranchIds = managedBranches.map((b) => b.id);
+
+    if (
+      !trainer.branch_id ||
+      !managedBranchIds.includes(trainer.branch_id)
+    ) {
+      throw new Error("HLV này không thuộc chi nhánh bạn quản lý.");
+    }
+  }
+
+  trainer.user.status = status;
+  await userRepo.save(trainer.user);
+
+  if (trainer.user) {
+    delete trainer.user.password;
+  }
+
+  return trainer;
+};
 
 /**
  * Public trainer detail.
@@ -39,8 +137,6 @@ export const getPublicTrainerDetail = async (trainerId: number) => {
     order: { issued_at: "DESC", id: "DESC" },
   });
 
-  // Trainer Packages hiện đang là gói chung theo level (junior/senior/master),
-  // không gắn riêng theo từng trainer. Lọc theo level của trainer này để hiển thị.
   let packages: TrainerPackage[] = [];
   if (trainer.level) {
     const packageRepo = AppDataSource.getRepository(TrainerPackage);
@@ -53,7 +149,6 @@ export const getPublicTrainerDetail = async (trainerId: number) => {
     });
   }
 
-  // Sanitize user (loại bỏ password và data nhạy cảm)
   const safeUser = trainer.user
     ? {
         id: trainer.user.id,
@@ -115,8 +210,6 @@ export const getPublicTrainerDetail = async (trainerId: number) => {
       mode: pkg.mode,
       description: pkg.description ?? null,
     })),
-    // Reviews chưa có entity riêng cho trainer; trả mảng rỗng để FE
-    // hiển thị "Chưa có đánh giá" theo đúng convention.
     reviews: [] as Array<{
       id: number;
       author: string;
