@@ -132,3 +132,27 @@ export const deleteShiftHandler = async (req: Request, res: Response) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+export const getMyShiftsHandler = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const query: GetWorkShiftsQueryDto = {
+      user_id: userId,
+    };
+
+    if (req.query.branch_id) {
+      query.branch_id = Number(req.query.branch_id);
+    }
+    if (req.query.date) {
+      query.date = String(req.query.date);
+    }
+
+    const shifts = await fetchShifts(query);
+    res.json({
+      message: 'Lấy lịch làm việc cá nhân thành công.',
+      data: shifts,
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};

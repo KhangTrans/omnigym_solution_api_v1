@@ -5,10 +5,14 @@ import {
   getShiftByIdHandler,
   updateShiftHandler,
   deleteShiftHandler,
+  getMyShiftsHandler,
 } from '../controllers/work-shift.controller.js';
 import { isAuthenticated, authorizeRole } from '../middlewares/auth.middleware.js';
 
 const router = Router();
+
+// Xem lịch làm việc cá nhân
+router.get('/me', isAuthenticated, getMyShiftsHandler);
 
 // Staff, Trainer, BranchManager, Admin đều được xem danh sách ca làm việc (phân quyền dữ liệu trong controller)
 router.get('/', isAuthenticated, getShiftsHandler);
