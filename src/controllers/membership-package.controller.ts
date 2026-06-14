@@ -18,8 +18,11 @@ const formatPackageResponse = async (pkg: any) => {
     apply_to_all,
     branches: pkg.branches?.map((mb: any) => ({
       id: mb.branch_id,
-      name: mb.branch?.name,
-      address: mb.branch?.address
+      name: mb.branch?.branch_name,
+      branch_name: mb.branch?.branch_name,
+      address: mb.branch?.address,
+      province: mb.branch?.province,
+      district: mb.branch?.district
     })) || []
   };
 };
